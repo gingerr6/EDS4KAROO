@@ -129,7 +129,7 @@ class OverlayWindowHandler(
         val notificationBuilder: NotificationCompat.Builder =
             NotificationCompat.Builder(service, notificationChannel.id)
         val notification: Notification = notificationBuilder.setOngoing(true)
-            .setContentTitle("Ki2")
+            .setContentTitle("EDS")
             .setContentText("Overlay active")
             .setSmallIcon(R.drawable.ic_icon)
             .setPriority(NotificationManager.IMPORTANCE_MIN)

@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class Ki2ExtensionService : KarooExtension("ki2", BuildConfig.VERSION_NAME) {
+class Ki2ExtensionService : KarooExtension("eds", BuildConfig.VERSION_NAME) {
 
     companion object {
         fun getIntent(): Intent {
@@ -92,7 +92,7 @@ class Ki2ExtensionService : KarooExtension("ki2", BuildConfig.VERSION_NAME) {
     override fun onCreate() {
         super.onCreate()
         extensionContext.let {
-            Timber.i("Ki2 Extension initialized")
+            Timber.i("EDS Extension initialized")
 
             extensionContext.karooSystem.connect { connected ->
                 Timber.i("Connected to Karoo System: $connected")

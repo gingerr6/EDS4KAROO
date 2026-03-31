@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">Ki2</string>
+    <string name="app_name">EDS</string>
     <string name="network_key">uaUh+71yw0U=</string>
 
     <string name="dash">-</string>
 
-    <string name="text_main_message">Di2 back to Karoo</string>
+    <string name="text_main_message">EDS for Karoo</string>
     <string name="text_param_found_devices">Found %d device(s)</string>
     <string name="text_searching_for_devices">Searching for devices…</string>
     <string name="text_unable_to_scan_devices">Unable to search for devices</string>
@@ -69,7 +69,7 @@
     <string name="text_di2_low_battery">Di2 low battery</string>
     <string name="text_update_complete">Update complete</string>
     <string name="text_update_complete_restart">Update complete, please restart Karoo</string>
-    <string name="text_ki2_updated">Ki2 updated</string>
+    <string name="text_ki2_updated">EDS updated</string>
     <string name="text_report_problems">Report problems at:\nhttps://github.com/valterc/ki2</string>
     <string name="text_check_for_updates">Check for updates</string>
     <string name="text_on_latest_version">You have the latest version available.</string>
@@ -78,16 +78,16 @@
     <string name="text_updating">Updating…</string>
     <string name="text_update_accept_prompts">Please <b>accept the permissions and package install</b> when prompted by the system.\n\nDuring the update <b>the app will close and restart a few seconds later</b>.</string>
     <string name="text_update_available">Update available</string>
-    <string name="text_update_ki2">Update Ki2</string>
+    <string name="text_update_ki2">Update EDS</string>
     <string name="text_header_new_version">New version:</string>
     <string name="text_header_details">Details:</string>
     <string name="text_header_release_date">Release date:</string>
     <string name="text_checking_for_updates">Checking for updates…</string>
     <string name="text_header_current_version">Current version:</string>
     <string name="text_update">Update</string>
-    <string name="text_update_error_permissions">Permission not granted. You need to allow Ki2 to install unknown apps.</string>
-    <string name="text_param_update_available_version">Update available for Ki2, version %s.</string>
-    <string name="text_update_tutorial_2">Enable <b>Allow from this source</b> for Ki2 to be able to install the update.</string>
+    <string name="text_update_error_permissions">Permission not granted. You need to allow EDS to install unknown apps.</string>
+    <string name="text_param_update_available_version">Update available for EDS, version %s.</string>
+    <string name="text_update_tutorial_2">Enable <b>Allow from this source</b> for EDS to be able to install the update.</string>
     <string name="text_update_tutorial_1">When prompted by the system, press <b>Settings</b> and enable app installation. This is required for the app update.</string>
     <string name="text_update_tutorial_3">After enabling <b>Allow from this source</b>, press the left bottom Karoo button to return to the update installation.</string>
     <string name="text_update_tutorial_4">Press the <b>Install</b> button, the app will close and update. After the update is completed you will see a notification in the control center to restart the device.</string>
@@ -104,7 +104,7 @@
     <string name="text_switches_only">Switches only</string>
     <string name="text_enabled">Enabled</string>
     <string name="text_device_switches_only">In \'Switches only\' mode, the app will not use any data from this device except for Switch/Button events.\n\nData such as gearing or battery will not be displayed in ride elements.</string>
-    <string name="text_device_disable">Ki2 will not connect to disabled devices.</string>
+    <string name="text_device_disable">EDS will not connect to disabled devices.</string>
     <string name="text_question_device_disable">Disable device?</string>
     <string name="text_drag">Drag</string>
     <string name="text_gearing">Gearing</string>
@@ -140,5 +140,5 @@
     <string name="text_drivetrain">Drivetrain</string>
     <string name="text_bike_battery">Bike Battery</string>
     <string name="text_yes">Yes</string>
-    <string name="text_overlay_permission">Please allow Ki2 to <b>Display Over Other Apps</b>.</string>
+    <string name="text_overlay_permission">Please allow EDS to <b>Display Over Other Apps</b>.</string>
 </resources>

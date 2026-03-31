@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
-    id="ki2"
+    id="eds"
     displayName="@string/app_name"
     icon="@drawable/ic_icon"
     scansDevices="true">
