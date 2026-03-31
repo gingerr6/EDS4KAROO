@@ -1,6 +1,7 @@
 package com.valterc.ki2.services;
 
 import android.app.Service;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,22 +17,24 @@ import android.os.RemoteException;
 import androidx.preference.PreferenceManager;
 
 import com.valterc.ki2.R;
-import com.valterc.ki2.ant.AntManager;
-import com.valterc.ki2.ant.connection.AntConnectionManager;
-import com.valterc.ki2.ant.connection.IAntDeviceConnection;
-import com.valterc.ki2.ant.connection.IDeviceConnectionListener;
-import com.valterc.ki2.ant.scanner.AntScanner;
-import com.valterc.ki2.ant.scanner.IAntScanListener;
+import com.valterc.ki2.ble.BleDeviceMapper;
+import com.valterc.ki2.ble.BleManager;
+import com.valterc.ki2.ble.EdsProtocol;
+import com.valterc.ki2.ble.connection.BleConnectionManager;
+import com.valterc.ki2.ble.connection.BleDeviceConnection;
+import com.valterc.ki2.ble.connection.IBleConnectionListener;
+import com.valterc.ki2.ble.scanner.BleScanner;
+import com.valterc.ki2.ble.scanner.IBleResultListener;
 import com.valterc.ki2.data.action.KarooActionEvent;
-import com.valterc.ki2.data.command.CommandType;
-import com.valterc.ki2.data.configuration.ConfigurationStore;
 import com.valterc.ki2.data.connection.ConnectionDataManager;
 import com.valterc.ki2.data.connection.ConnectionStatus;
 import com.valterc.ki2.data.connection.ConnectionsDataManager;
 import com.valterc.ki2.data.device.BatteryInfo;
 import com.valterc.ki2.data.device.DeviceId;
 import com.valterc.ki2.data.device.DeviceStore;
+import com.valterc.ki2.data.device.DeviceType;
 import com.valterc.ki2.data.info.DataType;
+import com.valterc.ki2.data.info.Manufacturer;
 import com.valterc.ki2.data.info.ManufacturerInfo;
 import com.valterc.ki2.data.message.Message;
 import com.valterc.ki2.data.message.MessageManager;
@@ -43,7 +46,11 @@ import com.valterc.ki2.data.preferences.device.DevicePreferences;
 import com.valterc.ki2.data.preferences.device.DevicePreferencesStore;
 import com.valterc.ki2.data.preferences.device.DevicePreferencesView;
 import com.valterc.ki2.data.ride.RideStatus;
+import com.valterc.ki2.data.shifting.BuzzerType;
+import com.valterc.ki2.data.shifting.FrontTeethPattern;
+import com.valterc.ki2.data.shifting.RearTeethPattern;
 import com.valterc.ki2.data.shifting.ShiftingInfo;
+import com.valterc.ki2.data.shifting.ShiftingMode;
 import com.valterc.ki2.data.switches.SwitchEvent;
 import com.valterc.ki2.data.update.ReleaseInfo;
 import com.valterc.ki2.input.InputManager;
@@ -67,6 +74,7 @@ import com.valterc.ki2.update.post.PostUpdateContext;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,18 +83,37 @@ import java.util.stream.Collectors;
 
 import timber.log.Timber;
 
-public class Ki2Service extends Service implements IAntScanListener, IDeviceConnectionListener, IUpdateCheckerListener {
+public class Ki2Service extends Service
+        implements IBleResultListener, IBleConnectionListener, IUpdateCheckerListener {
 
-    /**
-     * Get intent to bind to this service.
-     *
-     * @return Intent configured to be used to bind to this service.
-     */
+    // -------------------------------------------------------------------------
+    // Per-device gear state (keyed by MAC address)
+    // -------------------------------------------------------------------------
+
+    private static class BleGearState {
+        int frontGear    = 1;
+        int frontGearMax = 1;
+        int rearGear     = 1;
+        int rearGearMax  = 11;
+        int racingMode   = 0;
+        boolean racingModeManuallySet = false;
+        String leftVersion  = "";
+        String rightVersion = "";
+    }
+
+    // -------------------------------------------------------------------------
+    // Service setup
+    // -------------------------------------------------------------------------
+
     public static Intent getIntent() {
         Intent serviceIntent = new Intent();
         serviceIntent.setComponent(new ComponentName("com.valterc.ki2", "com.valterc.ki2.services.Ki2Service"));
         return serviceIntent;
     }
+
+    // -------------------------------------------------------------------------
+    // Callback lists (unchanged from original)
+    // -------------------------------------------------------------------------
 
     private final RemoteCallbackList<IConnectionDataInfoCallback> callbackListConnectionDataInfo
             = new RemoteCallbackList<>();
@@ -95,6 +122,12 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
     private final RemoteCallbackList<IManufacturerInfoCallback> callbackListManufacturerInfo
             = new RemoteCallbackList<>();
     private final RemoteCallbackList<IBatteryCallback> callbackListBattery
+            = new RemoteCallbackList<>();
+    private final RemoteCallbackList<IBatteryCallback> callbackListBatteryRd
+            = new RemoteCallbackList<>();
+    private final RemoteCallbackList<IBatteryCallback> callbackListShifterL
+            = new RemoteCallbackList<>();
+    private final RemoteCallbackList<IBatteryCallback> callbackListShifterR
             = new RemoteCallbackList<>();
     private final RemoteCallbackList<IShiftingCallback> callbackListShifting
             = new RemoteCallbackList<>();
@@ -111,23 +144,21 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
     private final RemoteCallbackList<IDevicePreferencesCallback> callbackListDevicePreferences
             = new RemoteCallbackList<>();
 
+    // -------------------------------------------------------------------------
+    // AIDL binder
+    // -------------------------------------------------------------------------
+
     private final IKi2Service.Stub binder = new IKi2Service.Stub() {
+
         @Override
         public void registerConnectionDataInfoListener(IConnectionDataInfoCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListConnectionDataInfo.register(callback);
             serviceHandler.postAction(() -> {
-                for (ConnectionDataManager connectionDataManager : connectionsDataManager.getDataManagers()) {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
                     try {
-                        callback.onConnectionDataInfo(
-                                connectionDataManager.getDeviceId(),
-                                connectionDataManager.buildConnectionDataInfo());
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                        callback.onConnectionDataInfo(m.getDeviceId(), m.buildConnectionDataInfo());
+                    } catch (RemoteException e) { break; }
                 }
             });
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
@@ -135,29 +166,19 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
 
         @Override
         public void unregisterConnectionDataInfoListener(IConnectionDataInfoCallback callback) {
-            if (callback != null) {
-                callbackListConnectionDataInfo.unregister(callback);
-            }
-
+            if (callback != null) callbackListConnectionDataInfo.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerConnectionInfoListener(IConnectionInfoCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListConnectionInfo.register(callback);
             serviceHandler.postAction(() -> {
-                for (ConnectionDataManager connectionDataManager : connectionsDataManager.getDataManagers()) {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
                     try {
-                        callback.onConnectionInfo(
-                                connectionDataManager.getDeviceId(),
-                                connectionDataManager.buildConnectionInfo());
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                        callback.onConnectionInfo(m.getDeviceId(), m.buildConnectionInfo());
+                    } catch (RemoteException e) { break; }
                 }
             });
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
@@ -165,32 +186,20 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
 
         @Override
         public void unregisterConnectionInfoListener(IConnectionInfoCallback callback) {
-            if (callback != null) {
-                callbackListConnectionInfo.unregister(callback);
-            }
-
+            if (callback != null) callbackListConnectionInfo.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerShiftingListener(IShiftingCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListShifting.register(callback);
             serviceHandler.postAction(() -> {
-                for (ConnectionDataManager connectionDataManager : connectionsDataManager.getDataManagers()) {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
                     try {
-                        ShiftingInfo shiftingInfo = (ShiftingInfo) connectionDataManager.getData(DataType.SHIFTING);
-                        if (shiftingInfo != null) {
-                            callback.onShifting(
-                                    connectionDataManager.getDeviceId(),
-                                    shiftingInfo);
-                        }
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                        ShiftingInfo info = (ShiftingInfo) m.getData(DataType.SHIFTING);
+                        if (info != null) callback.onShifting(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
                 }
             });
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
@@ -198,33 +207,20 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
 
         @Override
         public void unregisterShiftingListener(IShiftingCallback callback) {
-            if (callback != null) {
-                callbackListShifting.unregister(callback);
-            }
-
+            if (callback != null) callbackListShifting.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerBatteryListener(IBatteryCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListBattery.register(callback);
             serviceHandler.postAction(() -> {
-                for (ConnectionDataManager connectionDataManager : connectionsDataManager.getDataManagers()) {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
                     try {
-                        BatteryInfo batteryInfo = (BatteryInfo) connectionDataManager.getData(DataType.BATTERY);
-                        if (batteryInfo != null) {
-                            callback.onBattery(
-                                    connectionDataManager.getDeviceId(),
-                                    batteryInfo);
-                        }
-                    } catch (RemoteException e) {
-                        Timber.w(e, "Error during callback execution");
-                        break;
-                    }
+                        BatteryInfo info = (BatteryInfo) m.getData(DataType.BATTERY);
+                        if (info != null) callback.onBattery(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
                 }
             });
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
@@ -232,32 +228,83 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
 
         @Override
         public void unregisterBatteryListener(IBatteryCallback callback) {
-            if (callback != null) {
-                callbackListBattery.unregister(callback);
-            }
+            if (callback != null) callbackListBattery.unregister(callback);
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
 
+        @Override
+        public void registerRdBatteryListener(IBatteryCallback callback) {
+            if (callback == null) return;
+            callbackListBatteryRd.register(callback);
+            serviceHandler.postAction(() -> {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
+                    try {
+                        BatteryInfo info = (BatteryInfo) m.getData(DataType.BATTERY_RD);
+                        if (info != null) callback.onBattery(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
+                }
+            });
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
+
+        @Override
+        public void unregisterRdBatteryListener(IBatteryCallback callback) {
+            if (callback != null) callbackListBatteryRd.unregister(callback);
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
+
+        @Override
+        public void registerLShifterVoltageListener(IBatteryCallback callback) {
+            if (callback == null) return;
+            callbackListShifterL.register(callback);
+            serviceHandler.postAction(() -> {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
+                    try {
+                        BatteryInfo info = (BatteryInfo) m.getData(DataType.SHIFTER_L_VOLTAGE);
+                        if (info != null) callback.onBattery(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
+                }
+            });
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
+
+        @Override
+        public void unregisterLShifterVoltageListener(IBatteryCallback callback) {
+            if (callback != null) callbackListShifterL.unregister(callback);
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
+
+        @Override
+        public void registerRShifterVoltageListener(IBatteryCallback callback) {
+            if (callback == null) return;
+            callbackListShifterR.register(callback);
+            serviceHandler.postAction(() -> {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
+                    try {
+                        BatteryInfo info = (BatteryInfo) m.getData(DataType.SHIFTER_R_VOLTAGE);
+                        if (info != null) callback.onBattery(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
+                }
+            });
+            serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+        }
+
+        @Override
+        public void unregisterRShifterVoltageListener(IBatteryCallback callback) {
+            if (callback != null) callbackListShifterR.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerManufacturerInfoListener(IManufacturerInfoCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListManufacturerInfo.register(callback);
             serviceHandler.postAction(() -> {
-                for (ConnectionDataManager connectionDataManager : connectionsDataManager.getDataManagers()) {
+                for (ConnectionDataManager m : connectionsDataManager.getDataManagers()) {
                     try {
-                        ManufacturerInfo manufacturerInfo = (ManufacturerInfo) connectionDataManager.getData(DataType.MANUFACTURER_INFO);
-                        if (manufacturerInfo != null) {
-                            callback.onManufacturerInfo(
-                                    connectionDataManager.getDeviceId(),
-                                    manufacturerInfo);
-                        }
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                        ManufacturerInfo info = (ManufacturerInfo) m.getData(DataType.MANUFACTURER_INFO);
+                        if (info != null) callback.onManufacturerInfo(m.getDeviceId(), info);
+                    } catch (RemoteException e) { break; }
                 }
             });
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
@@ -265,165 +312,110 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
 
         @Override
         public void unregisterManufacturerInfoListener(IManufacturerInfoCallback callback) {
-            if (callback != null) {
-                callbackListManufacturerInfo.unregister(callback);
-            }
-
+            if (callback != null) callbackListManufacturerInfo.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerActionListener(IActionCallback callback) {
-            if (callback != null) {
-                callbackListAction.register(callback);
-            }
-
+            if (callback != null) callbackListAction.register(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void unregisterActionListener(IActionCallback callback) {
-            if (callback != null) {
-                callbackListAction.unregister(callback);
-            }
-
+            if (callback != null) callbackListAction.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerSwitchListener(ISwitchCallback callback) {
-            if (callback != null) {
-                callbackListSwitch.register(callback);
-            }
-
+            if (callback != null) callbackListSwitch.register(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void unregisterSwitchListener(ISwitchCallback callback) {
-            if (callback != null) {
-                callbackListSwitch.unregister(callback);
-            }
-
+            if (callback != null) callbackListSwitch.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
         }
 
         @Override
         public void registerScanListener(IScanCallback callback) {
-            if (callback != null) {
-                callbackListScan.register(callback);
-            }
-
+            if (callback != null) callbackListScan.register(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processScan);
         }
 
         @Override
         public void unregisterScanListener(IScanCallback callback) {
-            if (callback != null) {
-                callbackListScan.unregister(callback);
-            }
-
+            if (callback != null) callbackListScan.unregister(callback);
             serviceHandler.postRetriableAction(Ki2Service.this::processScan);
         }
 
         @Override
         public void registerMessageListener(IMessageCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListMessage.register(callback);
             serviceHandler.postAction(() -> {
                 for (Message message : messageManager.getMessages()) {
-                    try {
-                        callback.onMessage(message);
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                    try { callback.onMessage(message); } catch (RemoteException e) { break; }
                 }
             });
         }
 
         @Override
         public void unregisterMessageListener(IMessageCallback callback) {
-            if (callback != null) {
-                callbackListMessage.unregister(callback);
-            }
+            if (callback != null) callbackListMessage.unregister(callback);
         }
 
         @Override
         public void registerPreferencesListener(IPreferencesCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListPreferences.register(callback);
             serviceHandler.postAction(() -> {
-                try {
-                    callback.onPreferences(preferencesStore.getPreferences());
-                } catch (RemoteException e) {
-                    // ignore
-                }
+                try { callback.onPreferences(preferencesStore.getPreferences()); } catch (RemoteException e) { /* ignore */ }
             });
         }
 
         @Override
         public void unregisterPreferencesListener(IPreferencesCallback callback) {
-            if (callback != null) {
-                callbackListPreferences.unregister(callback);
-            }
+            if (callback != null) callbackListPreferences.unregister(callback);
         }
 
         @Override
         public void registerDevicePreferencesListener(IDevicePreferencesCallback callback) {
-            if (callback == null) {
-                return;
-            }
-
+            if (callback == null) return;
             callbackListDevicePreferences.register(callback);
             serviceHandler.postAction(() -> {
-                Set<Map.Entry<DeviceId, DevicePreferencesView>> entries = devicePreferencesStore.getDevicePreferences().entrySet();
+                Set<Map.Entry<DeviceId, DevicePreferencesView>> entries =
+                        devicePreferencesStore.getDevicePreferences().entrySet();
                 for (Map.Entry<DeviceId, DevicePreferencesView> entry : entries) {
                     try {
                         callback.onDevicePreferences(entry.getKey(), entry.getValue());
-                    } catch (RemoteException e) {
-                        break;
-                    }
+                    } catch (RemoteException e) { break; }
                 }
             });
         }
 
         @Override
         public void unregisterDevicePreferencesListener(IDevicePreferencesCallback callback) {
-            if (callback != null) {
-                callbackListDevicePreferences.unregister(callback);
-            }
+            if (callback != null) callbackListDevicePreferences.unregister(callback);
         }
 
         @Override
-        public void sendMessage(Message message) {
-            onMessage(message);
-        }
+        public void sendMessage(Message message) { onMessage(message); }
 
         @Override
-        public void clearMessage(String key) {
-            messageManager.clearMessage(key);
-        }
+        public void clearMessage(String key) { messageManager.clearMessage(key); }
 
         @Override
-        public void clearMessages() {
-            messageManager.clearMessages();
-        }
+        public void clearMessages() { messageManager.clearMessages(); }
 
         @Override
-        public List<Message> getMessages() {
-            return messageManager.getMessages();
-        }
+        public List<Message> getMessages() { return messageManager.getMessages(); }
 
         @Override
-        public PreferencesView getPreferences() {
-            return preferencesStore.getPreferences();
-        }
+        public PreferencesView getPreferences() { return preferencesStore.getPreferences(); }
 
         @Override
         public DevicePreferencesView getDevicePreferences(DeviceId deviceId) {
@@ -433,7 +425,7 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
         @Override
         public void restartDeviceScan() {
             serviceHandler.postRetriableAction(() -> {
-                antScanner.stopScan();
+                bleScanner.stopScan();
                 processScan();
             });
         }
@@ -441,26 +433,52 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
         @Override
         public void restartDeviceConnections() {
             serviceHandler.postRetriableAction(() -> {
-                antConnectionManager.disconnectAll();
+                bleConnectionManager.disconnectAll();
                 connectionsDataManager.clearConnections();
-
                 processConnections();
             });
         }
 
         @Override
         public void changeShiftMode(DeviceId deviceId) throws RemoteException {
-            Ki2Service.this.changeShiftMode(deviceId);
+            serviceHandler.postRetriableAction(() -> {
+                String mac = BleDeviceMapper.toMacAddress(deviceId);
+                BleGearState state = gearStateMap.get(mac);
+                if (state == null) {
+                    Timber.w("changeShiftMode: no gear state for %s", mac);
+                    return;
+                }
+
+                // Toggle racing mode: 0 → 1, 1 → 0
+                state.racingMode = state.racingMode == 0 ? 1 : 0;
+                state.racingModeManuallySet = true;
+                Timber.d("changeShiftMode: toggled to racingMode=%d for %s", state.racingMode, mac);
+
+                // Send BLE command to set racing mode on device
+                // Protocol: cmd=0x93, payload = 0x01 (race ON) or 0x02 (race OFF)
+                BleDeviceConnection connection = bleConnectionManager.getConnection(mac);
+                if (connection != null && connection.isReady()) {
+                    byte modePayload = (byte) (state.racingMode == 1 ? 0x01 : 0x02);
+                    connection.sendCommand(EdsProtocol.CMD_SET_PROTECTION_THRESHOLD,
+                            new byte[]{modePayload});
+                    Timber.d("changeShiftMode: sent cmd=0x93 payload=0x%02X", modePayload);
+                }
+
+                // Re-emit shifting info so the UI updates
+                onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+            });
         }
 
         @Override
         public void reconnectDevice(DeviceId deviceId) {
             serviceHandler.postRetriableAction(() -> {
-                antConnectionManager.disconnect(deviceId);
+                String mac = BleDeviceMapper.toMacAddress(deviceId);
+                bleConnectionManager.disconnect(mac);
                 connectionsDataManager.removeConnection(deviceId);
 
                 connectionsDataManager.addConnection(deviceId);
-                antConnectionManager.connect(deviceId, Ki2Service.this, true);
+                BluetoothDevice device = bleManager.getAdapter().getRemoteDevice(mac);
+                bleConnectionManager.connect(device, Ki2Service.this);
             });
         }
 
@@ -469,11 +487,12 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
             deviceStore.saveDevice(deviceId);
             serviceHandler.postRetriableAction(() -> {
                 processConnections();
-
-                DevicePreferencesView devicePreferencesView = devicePreferencesStore.getDevicePreferences(deviceId);
-                if (devicePreferencesView != null) {
-                    serviceHandler.postRetriableAction(() -> broadcastData(callbackListDevicePreferences,
-                            () -> devicePreferencesView, (callback, devicePreferences) -> callback.onDevicePreferences(deviceId, devicePreferences)));
+                DevicePreferencesView view = devicePreferencesStore.getDevicePreferences(deviceId);
+                if (view != null) {
+                    serviceHandler.postRetriableAction(() ->
+                            broadcastData(callbackListDevicePreferences,
+                                    () -> view,
+                                    (cb, dp) -> cb.onDevicePreferences(deviceId, dp)));
                 }
             });
         }
@@ -491,26 +510,34 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
         }
     };
 
+    // -------------------------------------------------------------------------
+    // Broadcast receivers
+    // -------------------------------------------------------------------------
+
     private final BroadcastReceiver receiverReconnectDevices = new BroadcastReceiver() {
         @Override
-        public void onReceive(final Context context, final Intent intent) {
+        public void onReceive(Context context, Intent intent) {
             Timber.i("Received reconnect devices broadcast");
-            serviceHandler.postRetriableAction(() -> antConnectionManager.restartClosedConnections(Ki2Service.this));
+            serviceHandler.postRetriableAction(() -> bleConnectionManager.reconnectAll(Ki2Service.this));
         }
     };
 
     private final BroadcastReceiver receiverInRide = new BroadcastReceiver() {
         @Override
-        public void onReceive(final Context context, final Intent intent) {
+        public void onReceive(Context context, Intent intent) {
             Timber.i("Received In Ride broadcast");
             serviceHandler.postRetriableAction(() -> onMessage(new RideStatusMessage(RideStatus.ONGOING)));
         }
     };
 
+    // -------------------------------------------------------------------------
+    // Service fields
+    // -------------------------------------------------------------------------
+
     private MessageManager messageManager;
-    private AntManager antManager;
-    private AntScanner antScanner;
-    private AntConnectionManager antConnectionManager;
+    private BleManager bleManager;
+    private BleScanner bleScanner;
+    private BleConnectionManager bleConnectionManager;
     private ServiceHandler serviceHandler;
     private DeviceStore deviceStore;
     private ConnectionsDataManager connectionsDataManager;
@@ -519,46 +546,66 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
     private PreferencesStore preferencesStore;
     private DevicePreferencesStore devicePreferencesStore;
 
+    private final Map<String, BleGearState> gearStateMap = new HashMap<>();
+
+    // -------------------------------------------------------------------------
+    // Service lifecycle
+    // -------------------------------------------------------------------------
+
     @Override
-    public IBinder onBind(Intent arg0) {
-        return binder;
-    }
+    public IBinder onBind(Intent arg0) { return binder; }
 
     @Override
     public void onCreate() {
         PostUpdateActions.executePreInit(new PostUpdateContext(this, deviceStore));
 
-        messageManager = new MessageManager();
-        antManager = new AntManager(this);
-        antScanner = new AntScanner(antManager, this);
-        antConnectionManager = new AntConnectionManager(this, antManager);
-        serviceHandler = new ServiceHandler();
-        deviceStore = new DeviceStore(this);
+        messageManager      = new MessageManager();
+        bleManager          = new BleManager(this);
+        bleScanner          = new BleScanner(bleManager, this);
+        bleConnectionManager = new BleConnectionManager(this);
+        serviceHandler      = new ServiceHandler();
+        deviceStore         = new DeviceStore(this);
         connectionsDataManager = new ConnectionsDataManager();
-        inputManager = new InputManager(this);
+        inputManager        = new InputManager(this);
         backgroundUpdateChecker = new BackgroundUpdateChecker(this, this);
-        preferencesStore = new PreferencesStore(this, this::onPreferences);
+        preferencesStore    = new PreferencesStore(this, this::onPreferences);
         devicePreferencesStore = new DevicePreferencesStore(this, this::onDevicePreferences);
+
+        bleManager.setAdapterStateListener(new BleManager.AdapterStateListener() {
+            @Override
+            public void onBluetoothEnabled() {
+                serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
+            }
+
+            @Override
+            public void onBluetoothDisabled() {
+                bleConnectionManager.disconnectAll();
+                connectionsDataManager.clearConnections();
+            }
+        });
 
         DebugHelper.init(deviceStore);
         PostUpdateActions.executePostInit(new PostUpdateContext(this, deviceStore));
         devicePreferencesStore.setDevices(deviceStore.getDevices());
 
-        registerReceiver(receiverReconnectDevices, new IntentFilter("io.hammerhead.action.RECONNECT_DEVICES"), Context.RECEIVER_EXPORTED);
-        registerReceiver(receiverInRide, new IntentFilter("io.hammerhead.action.IN_RIDE"), Context.RECEIVER_EXPORTED);
+        registerReceiver(receiverReconnectDevices,
+                new IntentFilter("io.hammerhead.action.RECONNECT_DEVICES"), Context.RECEIVER_EXPORTED);
+        registerReceiver(receiverInRide,
+                new IntentFilter("io.hammerhead.action.IN_RIDE"), Context.RECEIVER_EXPORTED);
         Timber.i("Service created");
     }
 
     @Override
     public void onDestroy() {
         Timber.i("Service destroyed");
-        antConnectionManager.disconnectAll();
-
-        antManager.dispose();
-        antManager = null;
+        bleConnectionManager.disconnectAll();
+        bleManager.dispose();
 
         callbackListManufacturerInfo.kill();
         callbackListBattery.kill();
+        callbackListBatteryRd.kill();
+        callbackListShifterL.kill();
+        callbackListShifterR.kill();
         callbackListShifting.kill();
         callbackListSwitch.kill();
         callbackListScan.kill();
@@ -567,7 +614,6 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
         callbackListAction.kill();
         callbackListMessage.kill();
         backgroundUpdateChecker.dispose();
-
         serviceHandler.dispose();
 
         unregisterReceiver(receiverReconnectDevices);
@@ -575,114 +621,210 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
         super.onDestroy();
     }
 
+    // -------------------------------------------------------------------------
+    // Scan and connection management
+    // -------------------------------------------------------------------------
+
     private void processScan() {
         if (callbackListScan.getRegisteredCallbackCount() != 0) {
-            if (antManager.isAntServiceReady()) {
-                antScanner.startScan(ConfigurationStore.getScanChannelConfiguration(Ki2Service.this));
-            }
+            bleScanner.startScan();
         } else {
-            antScanner.stopScan();
+            bleScanner.stopScan();
         }
     }
 
-    private void processConnections() throws Exception {
-        Collection<DeviceId> devices = deviceStore.getDevices();
-        devicePreferencesStore.setDevices(devices);
+    private void processConnections() {
+        Collection<DeviceId> allDevices = deviceStore.getDevices();
+        devicePreferencesStore.setDevices(allDevices);
 
-        if (callbackListSwitch.getRegisteredCallbackCount() != 0
-                || callbackListConnectionInfo.getRegisteredCallbackCount() != 0
-                || callbackListBattery.getRegisteredCallbackCount() != 0
-                || callbackListConnectionDataInfo.getRegisteredCallbackCount() != 0
-                || callbackListManufacturerInfo.getRegisteredCallbackCount() != 0
-                || callbackListShifting.getRegisteredCallbackCount() != 0
-                || callbackListAction.getRegisteredCallbackCount() != 0) {
-            if (antManager.isAntServiceReady()) {
-                Collection<DeviceId> enabledDevices = devices.stream()
-                        .filter(deviceId -> new DevicePreferences(this, deviceId).isEnabled())
+        if (hasActiveCallbacks()) {
+            if (bleManager.isBluetoothReady()) {
+                List<DeviceId> enabledDeviceIds = allDevices.stream()
+                        .filter(id -> id.getDeviceType() == DeviceType.WHEELTOP_SHIFTING)
+                        .filter(id -> new DevicePreferences(this, id).isEnabled())
                         .collect(Collectors.toList());
 
-                connectionsDataManager.addConnections(enabledDevices);
-                antConnectionManager.connectOnly(enabledDevices, this);
-                connectionsDataManager.setConnections(enabledDevices);
+                List<BluetoothDevice> enabledBleDevices = enabledDeviceIds.stream()
+                        .map(id -> bleManager.getAdapter()
+                                .getRemoteDevice(BleDeviceMapper.toMacAddress(id)))
+                        .collect(Collectors.toList());
+
+                connectionsDataManager.addConnections(enabledDeviceIds);
+                bleConnectionManager.connectOnly(enabledBleDevices, this);
+                connectionsDataManager.setConnections(enabledDeviceIds);
             }
         } else {
-            antConnectionManager.disconnectAll();
+            bleConnectionManager.disconnectAll();
             connectionsDataManager.clearConnections();
         }
     }
 
-    private void changeShiftMode(DeviceId deviceId) throws RemoteException {
-        sendCommandToDevice(deviceId, CommandType.SHIFTING_MODE, null);
+    private boolean hasActiveCallbacks() {
+        return callbackListSwitch.getRegisteredCallbackCount() != 0
+                || callbackListConnectionInfo.getRegisteredCallbackCount() != 0
+                || callbackListBattery.getRegisteredCallbackCount() != 0
+                || callbackListBatteryRd.getRegisteredCallbackCount() != 0
+                || callbackListShifterL.getRegisteredCallbackCount() != 0
+                || callbackListShifterR.getRegisteredCallbackCount() != 0
+                || callbackListConnectionDataInfo.getRegisteredCallbackCount() != 0
+                || callbackListManufacturerInfo.getRegisteredCallbackCount() != 0
+                || callbackListShifting.getRegisteredCallbackCount() != 0
+                || callbackListAction.getRegisteredCallbackCount() != 0;
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private void sendCommandToDevice(DeviceId deviceId, CommandType commandType, Parcelable data) throws RemoteException {
-        IAntDeviceConnection antDeviceConnection = antConnectionManager.getConnection(deviceId);
-
-        if (antDeviceConnection == null) {
-            throw new RemoteException("No connection to device " + deviceId);
-        }
-
-        if (antDeviceConnection.getConnectionStatus() != ConnectionStatus.ESTABLISHED) {
-            throw new RemoteException("Connection to device " + deviceId + " is not established");
-        }
-
-        try {
-            antDeviceConnection.sendCommand(commandType, data);
-            Timber.i("Sent command %s to device %s", commandType, deviceId);
-        } catch (Exception e) {
-            Timber.e(e, "Unable to send command %s to device %s", commandType, deviceId);
-            throw new RemoteException("Unable to send command");
-        }
-    }
+    // -------------------------------------------------------------------------
+    // IBleResultListener — scan results
+    // -------------------------------------------------------------------------
 
     @Override
-    public void onAntScanResult(DeviceId deviceId) {
+    public void onBleDeviceFound(BluetoothDevice device, int rssi) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
         serviceHandler.postAction(() -> broadcastScanResult(deviceId));
     }
 
+    // -------------------------------------------------------------------------
+    // IBleConnectionListener — connection + data events
+    // -------------------------------------------------------------------------
+
     @Override
-    public void onConnectionStatus(DeviceId deviceId, ConnectionStatus connectionStatus) {
+    public void onConnected(BluetoothDevice device) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        gearStateMap.put(device.getAddress(), new BleGearState());
+        onConnectionStatus(deviceId, ConnectionStatus.ESTABLISHED);
+    }
+
+    @Override
+    public void onDisconnected(BluetoothDevice device) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        gearStateMap.remove(device.getAddress());
+        onConnectionStatus(deviceId, ConnectionStatus.CLOSED);
+    }
+
+    @Override
+    public void onFrontGearChanged(BluetoothDevice device, int gear, int totalGears) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        BleGearState state = gearStateOrCreate(device);
+        state.frontGear    = gear;
+        state.frontGearMax = totalGears;
+        onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+    }
+
+    @Override
+    public void onRearGearChanged(BluetoothDevice device, int gear, int totalGears) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        BleGearState state = gearStateOrCreate(device);
+        state.rearGear    = gear;
+        state.rearGearMax = totalGears;
+        onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+    }
+
+    @Override
+    public void onDeviceInfo(BluetoothDevice device,
+                             String leftVersion, String rightVersion,
+                             int leftPowerRaw, int rightPowerRaw,
+                             int fdPowerRaw, int rdPowerRaw,
+                             int racingMode) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        BleGearState state = gearStateOrCreate(device);
+        state.leftVersion  = leftVersion;
+        state.rightVersion = rightVersion;
+        if (!state.racingModeManuallySet) {
+            state.racingMode = racingMode;
+        }
+
+        // Manufacturer / firmware info
+        ManufacturerInfo mfrInfo = new ManufacturerInfo(
+                device.getAddress(),      // componentId = MAC address
+                "",                       // hardwareVersion (not provided by EDS)
+                Manufacturer.UNKNOWN,
+                "EDS",                    // modelNumber
+                device.getAddress(),      // serialNumber = MAC address
+                leftVersion + "/" + rightVersion
+        );
+        onData(deviceId, DataType.MANUFACTURER_INFO, mfrInfo);
+
+        // All power values are raw voltage × 100 (e.g. 780 = 7.80 V)
+        Timber.d("Battery raw: L=%d R=%d FD=%d RD=%d", leftPowerRaw, rightPowerRaw, fdPowerRaw, rdPowerRaw);
+        onData(deviceId, DataType.BATTERY, new BatteryInfo(fdPowerRaw));
+        onData(deviceId, DataType.BATTERY_RD, new BatteryInfo(rdPowerRaw));
+        onData(deviceId, DataType.SHIFTER_L_VOLTAGE, new BatteryInfo(leftPowerRaw));
+        onData(deviceId, DataType.SHIFTER_R_VOLTAGE, new BatteryInfo(rightPowerRaw));
+
+        // Emit shifting info so racing mode shows up in the UI
+        onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal data helpers
+    // -------------------------------------------------------------------------
+
+    private BleGearState gearStateOrCreate(BluetoothDevice device) {
+        return gearStateMap.computeIfAbsent(device.getAddress(), k -> new BleGearState());
+    }
+
+    private ShiftingInfo buildShiftingInfo(BleGearState state) {
+        return new ShiftingInfo(
+                BuzzerType.DEFAULT,
+                state.frontGear, state.frontGearMax,
+                state.rearGear,  state.rearGearMax,
+                FrontTeethPattern.UNKNOWN,
+                RearTeethPattern.UNKNOWN,
+                state.racingMode == 1 ? ShiftingMode.RACE : ShiftingMode.NORMAL
+        );
+    }
+
+    private void onConnectionStatus(DeviceId deviceId, ConnectionStatus connectionStatus) {
         if (!serviceHandler.isOnServiceHandlerThread()) {
             serviceHandler.postAction(() -> onConnectionStatus(deviceId, connectionStatus));
             return;
         }
 
         boolean sendUpdate = connectionsDataManager.onConnectionStatus(deviceId, connectionStatus);
-
         if (sendUpdate) {
             broadcastData(callbackListConnectionInfo,
                     () -> connectionsDataManager.buildConnectionInfo(deviceId),
-                    (callback, connectionInfo) -> callback.onConnectionInfo(deviceId, connectionInfo));
+                    (cb, info) -> cb.onConnectionInfo(deviceId, info));
             broadcastData(callbackListConnectionDataInfo,
                     () -> connectionsDataManager.buildConnectionDataInfo(deviceId),
-                    (callback, connectionDataInfo) -> callback.onConnectionDataInfo(deviceId, connectionDataInfo));
+                    (cb, info) -> cb.onConnectionDataInfo(deviceId, info));
         }
     }
 
-    @Override
-    public void onData(DeviceId deviceId, DataType dataType, Parcelable data) {
-
-        if (dataType == DataType.UNKNOWN) {
-            Timber.d("[%s] Unsupported data (type=%s, value=%s)", deviceId, dataType, data);
-            return;
-        }
+    private void onData(DeviceId deviceId, DataType dataType, Parcelable data) {
+        if (dataType == DataType.UNKNOWN) return;
 
         serviceHandler.postAction(() -> {
             boolean sendUpdate = connectionsDataManager.onData(deviceId, dataType, data);
             if (sendUpdate) {
                 switch (dataType) {
-
                     case SHIFTING:
                         broadcastData(callbackListShifting,
                                 () -> (ShiftingInfo) connectionsDataManager.getData(deviceId, dataType),
-                                (callback, shiftingInfo) -> callback.onShifting(deviceId, shiftingInfo));
+                                (cb, info) -> cb.onShifting(deviceId, info));
                         break;
 
                     case BATTERY:
                         broadcastData(callbackListBattery,
                                 () -> (BatteryInfo) connectionsDataManager.getData(deviceId, dataType),
-                                (callback, battery) -> callback.onBattery(deviceId, battery));
+                                (cb, info) -> cb.onBattery(deviceId, info));
+                        break;
+
+                    case BATTERY_RD:
+                        broadcastData(callbackListBatteryRd,
+                                () -> (BatteryInfo) connectionsDataManager.getData(deviceId, dataType),
+                                (cb, info) -> cb.onBattery(deviceId, info));
+                        break;
+
+                    case SHIFTER_L_VOLTAGE:
+                        broadcastData(callbackListShifterL,
+                                () -> (BatteryInfo) connectionsDataManager.getData(deviceId, dataType),
+                                (cb, info) -> cb.onBattery(deviceId, info));
+                        break;
+
+                    case SHIFTER_R_VOLTAGE:
+                        broadcastData(callbackListShifterR,
+                                () -> (BatteryInfo) connectionsDataManager.getData(deviceId, dataType),
+                                (cb, info) -> cb.onBattery(deviceId, info));
                         break;
 
                     case SWITCH:
@@ -690,90 +832,82 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
                         if (switchEvent != null) {
                             broadcastData(callbackListSwitch,
                                     () -> switchEvent,
-                                    (callback, se) -> callback.onSwitchEvent(deviceId, se));
+                                    (cb, se) -> cb.onSwitchEvent(deviceId, se));
+                            KarooActionEvent actionEvent = inputManager.onSwitch(switchEvent);
+                            if (actionEvent != null) {
+                                broadcastData(callbackListAction,
+                                        () -> actionEvent,
+                                        (cb, ae) -> cb.onActionEvent(deviceId, ae));
+                            }
                         }
-
-                        KarooActionEvent actionEvent = inputManager.onSwitch(switchEvent);
-                        if (actionEvent != null) {
-                            broadcastData(callbackListAction,
-                                    () -> actionEvent,
-                                    (callback, ke) -> callback.onActionEvent(deviceId, ke));
-                        }
-                        break;
-
-                    case KEY:
-                        broadcastData(callbackListAction,
-                                () -> (KarooActionEvent) connectionsDataManager.getData(deviceId, dataType),
-                                (callback, ke) -> callback.onActionEvent(deviceId, ke));
                         break;
 
                     case MANUFACTURER_INFO:
                         broadcastData(callbackListManufacturerInfo,
                                 () -> (ManufacturerInfo) connectionsDataManager.getData(deviceId, dataType),
-                                (callback, manufacturerInfo) -> callback.onManufacturerInfo(deviceId, manufacturerInfo));
+                                (cb, info) -> cb.onManufacturerInfo(deviceId, info));
                         break;
 
+                    default:
+                        break;
                 }
 
                 broadcastData(callbackListConnectionDataInfo,
                         () -> connectionsDataManager.getDataManager(deviceId).buildConnectionDataInfo(),
-                        (callback, connectionDataInfo) -> callback.onConnectionDataInfo(deviceId, connectionDataInfo));
+                        (cb, info) -> cb.onConnectionDataInfo(deviceId, info));
 
                 connectionsDataManager.clearEvents(deviceId);
             }
-
         });
     }
+
+    // -------------------------------------------------------------------------
+    // Broadcasting
+    // -------------------------------------------------------------------------
 
     private void broadcastScanResult(DeviceId deviceId) {
         int count = callbackListScan.beginBroadcast();
         for (int i = 0; i < count; i++) {
             try {
                 callbackListScan.getBroadcastItem(i).onScanResult(deviceId);
-            } catch (RemoteException e) {
-                // ignore
-            }
+            } catch (RemoteException e) { /* ignore */ }
         }
         callbackListScan.finishBroadcast();
     }
 
     private <TData,
-            TCallback extends IInterface,
-            TCallbackList extends RemoteCallbackList<TCallback>>
+             TCallback extends IInterface,
+             TCallbackList extends RemoteCallbackList<TCallback>>
     void broadcastData(TCallbackList callbackList,
                        Supplier<TData> dataSupplier,
                        UnsafeBroadcastInvoker<TCallback, TData> broadcastConsumer) {
         int count = callbackList.getRegisteredCallbackCount();
-        if (count == 0) {
-            return;
-        }
+        if (count == 0) return;
 
         TData data = dataSupplier.get();
-
-        if (data == null) {
-            return;
-        }
+        if (data == null) return;
 
         count = callbackList.beginBroadcast();
         for (int i = 0; i < count; i++) {
             try {
                 broadcastConsumer.invoke(callbackList.getBroadcastItem(i), data);
-            } catch (RemoteException e) {
-                // ignore
-            }
+            } catch (RemoteException e) { /* ignore */ }
         }
         callbackList.finishBroadcast();
     }
 
+    // -------------------------------------------------------------------------
+    // Messages
+    // -------------------------------------------------------------------------
+
     private void onMessage(Message message) {
-        if (message == null) {
-            return;
-        }
+        if (message == null) return;
 
         messageManager.messageReceived(message);
-        serviceHandler.postRetriableAction(() -> broadcastData(callbackListMessage, () -> message, IMessageCallback::onMessage));
+        serviceHandler.postRetriableAction(() ->
+                broadcastData(callbackListMessage, () -> message, IMessageCallback::onMessage));
 
-        SharedPreferences preferences;
+        SharedPreferences prefs;
         SharedPreferences.Editor editor;
 
         switch (message.getMessageType()) {
@@ -782,8 +916,8 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
                 if (rideStatusMessage != null) {
                     if (rideStatusMessage.getRideStatus() == RideStatus.ONGOING) {
                         serviceHandler.postRetriableAction(() -> {
-                            if (antConnectionManager.isNoConnectionEstablished()) {
-                                antConnectionManager.restartClosedConnections(this);
+                            if (!bleConnectionManager.hasActiveConnection()) {
+                                bleConnectionManager.reconnectAll(this);
                             }
                         });
                     } else if (rideStatusMessage.getRideStatus() == RideStatus.FINISHED) {
@@ -793,44 +927,50 @@ public class Ki2Service extends Service implements IAntScanListener, IDeviceConn
                 break;
 
             case AUDIO_ALERT_TOGGLE:
-                preferences = PreferenceManager.getDefaultSharedPreferences(this);
-                boolean audioAlertsEnabled = preferences.getBoolean(getString(R.string.preference_audio_alerts_enabled), getResources().getBoolean(R.bool.default_preference_audio_alerts_enabled));
-                editor = preferences.edit();
-                editor.putBoolean(getString(R.string.preference_audio_alerts_enabled), !audioAlertsEnabled);
+                prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                boolean audioEnabled = prefs.getBoolean(
+                        getString(R.string.preference_audio_alerts_enabled),
+                        getResources().getBoolean(R.bool.default_preference_audio_alerts_enabled));
+                editor = prefs.edit();
+                editor.putBoolean(getString(R.string.preference_audio_alerts_enabled), !audioEnabled);
                 editor.apply();
                 break;
 
             case AUDIO_ALERT_DISABLE:
-                preferences = PreferenceManager.getDefaultSharedPreferences(this);
-                editor = preferences.edit();
-                editor.putBoolean(getString(R.string.preference_audio_alerts_enabled), false);
-                editor.apply();
+                prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                prefs.edit().putBoolean(getString(R.string.preference_audio_alerts_enabled), false).apply();
                 break;
 
             case AUDIO_ALERT_ENABLE:
-                preferences = PreferenceManager.getDefaultSharedPreferences(this);
-                editor = preferences.edit();
-                editor.putBoolean(getString(R.string.preference_audio_alerts_enabled), true);
-                editor.apply();
+                prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                prefs.edit().putBoolean(getString(R.string.preference_audio_alerts_enabled), true).apply();
                 break;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // IUpdateCheckerListener
+    // -------------------------------------------------------------------------
+
     @Override
     public void onNewUpdateAvailable(ReleaseInfo releaseInfo) {
-        serviceHandler.postAction(() -> {
-            Message updateAvailableMessage = new UpdateAvailableMessage(releaseInfo);
-            onMessage(updateAvailableMessage);
-        });
+        serviceHandler.postAction(() -> onMessage(new UpdateAvailableMessage(releaseInfo)));
     }
 
+    // -------------------------------------------------------------------------
+    // Preferences callbacks
+    // -------------------------------------------------------------------------
+
     private void onPreferences(PreferencesView preferencesView) {
-        serviceHandler.postRetriableAction(() -> broadcastData(callbackListPreferences, () -> preferencesView, IPreferencesCallback::onPreferences));
+        serviceHandler.postRetriableAction(() ->
+                broadcastData(callbackListPreferences, () -> preferencesView, IPreferencesCallback::onPreferences));
     }
 
     private void onDevicePreferences(DeviceId deviceId, DevicePreferencesView devicePreferencesView) {
-        serviceHandler.postRetriableAction(() -> broadcastData(callbackListDevicePreferences,
-                () -> devicePreferencesView, (callback, devicePreferences) -> callback.onDevicePreferences(deviceId, devicePreferences)));
+        serviceHandler.postRetriableAction(() ->
+                broadcastData(callbackListDevicePreferences,
+                        () -> devicePreferencesView,
+                        (cb, dp) -> cb.onDevicePreferences(deviceId, dp)));
         serviceHandler.postRetriableAction(Ki2Service.this::processConnections);
     }
 }

@@ -6,6 +6,7 @@ public enum DeviceType {
 
     SHIMANO_SHIFTING(1),
     SHIMANO_EBIKE(2),
+    WHEELTOP_SHIFTING(3),
     UNKNOWN(ChannelId.MAX_DEVICE_TYPE + 1),
     MOCK_SHIFTING(UNKNOWN.value + 1);
 
@@ -30,6 +31,10 @@ public enum DeviceType {
 
     DeviceType(int value) {
         this.value = value;
+    }
+
+    public int getValue() {
+        return value;
     }
 
 }

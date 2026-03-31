@@ -52,9 +52,8 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
     }
 
     override fun onRideStart() {
-        extensionContext.serviceClient.registerShiftingInfoWeakListener(
-            shiftingInfoConsumer
-        )
+        previouslyUsedShiftingInfo = null
+        extensionContext.serviceClient.registerShiftingInfoWeakListener(shiftingInfoConsumer)
     }
 
     override fun onRideResume() {
@@ -62,12 +61,10 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
     }
 
     override fun onRideEnd() {
-        extensionContext.serviceClient.unregisterShiftingInfoWeakListener(
-            shiftingInfoConsumer
-        )
-
+        extensionContext.serviceClient.unregisterShiftingInfoWeakListener(shiftingInfoConsumer)
         frontShiftCount = 0
         rearShiftCount = 0
+        previouslyUsedShiftingInfo = null
     }
 
     fun addListener(listener: Consumer<ShiftCountHandler>) {

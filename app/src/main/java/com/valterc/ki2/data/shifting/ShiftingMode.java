@@ -2,11 +2,12 @@ package com.valterc.ki2.data.shifting;
 
 public enum ShiftingMode {
 
-    NORMAL(0, "M"),
+    NORMAL(0, "Normal"),
     ADJUSTMENT(1, "..."),
     RESETTING(2, "..."),
     SYNCHRONIZED_SHIFT_MODE_1(3, "S1"),
     SYNCHRONIZED_SHIFT_MODE_2(4, "S2"),
+    RACE(6, "Race"),
     INVALID(255, "");
 
     public static ShiftingMode fromValue(int value) {

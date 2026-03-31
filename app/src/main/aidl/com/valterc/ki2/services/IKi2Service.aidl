@@ -32,6 +32,15 @@ interface IKi2Service {
     void registerBatteryListener(IBatteryCallback callback);
     void unregisterBatteryListener(IBatteryCallback callback);
 
+    void registerRdBatteryListener(IBatteryCallback callback);
+    void unregisterRdBatteryListener(IBatteryCallback callback);
+
+    void registerLShifterVoltageListener(IBatteryCallback callback);
+    void unregisterLShifterVoltageListener(IBatteryCallback callback);
+
+    void registerRShifterVoltageListener(IBatteryCallback callback);
+    void unregisterRShifterVoltageListener(IBatteryCallback callback);
+
     void registerManufacturerInfoListener(IManufacturerInfoCallback callback);
     void unregisterManufacturerInfoListener(IManufacturerInfoCallback callback);
 

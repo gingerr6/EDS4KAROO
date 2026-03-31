@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Ki2</string>
+    <string name="network_key">uaUh+71yw0U=</string>
 
     <string name="dash">-</string>
 
@@ -9,6 +10,7 @@
     <string name="text_unable_to_scan_devices">Unable to search for devices</string>
     <string name="text_no_devices_found">No devices found</string>
     <string name="text_search_for_devices">Search for devices</string>
+    <string name="text_param_wheeltop_name">Wheeltop %s</string>
     <string name="text_param_di2_name">Di2 %s</string>
     <string name="text_param_steps_name">Steps %s</string>
     <string name="text_param_mock_name">Mock %s</string>

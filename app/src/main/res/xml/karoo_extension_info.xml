@@ -6,10 +6,32 @@
     scansDevices="true">
 
     <DataType
-        description="Shifting battery %."
-        displayName="Shifting Battery %"
+        description="FD battery voltage."
+        displayName="FD Battery V"
+        graphical="true"
         icon="@drawable/ic_hh_battery"
         typeId="DATATYPE_SHIFTING_BATTERY_PERCENTAGE" />
+
+    <DataType
+        description="RD battery voltage."
+        displayName="RD Battery V"
+        graphical="true"
+        icon="@drawable/ic_hh_battery"
+        typeId="DATATYPE_RD_BATTERY_PERCENTAGE" />
+
+    <DataType
+        description="Left shifter battery voltage."
+        displayName="L Shifter V"
+        graphical="true"
+        icon="@drawable/ic_hh_battery"
+        typeId="DATATYPE_L_SHIFTER_VOLTAGE" />
+
+    <DataType
+        description="Right shifter battery voltage."
+        displayName="R Shifter V"
+        graphical="true"
+        icon="@drawable/ic_hh_battery"
+        typeId="DATATYPE_R_SHIFTER_VOLTAGE" />
 
     <DataType
         description="Shifting mode. Pressing the text will change the shifting mode."
@@ -75,15 +97,15 @@
         typeId="DATATYPE_SHIFT_COUNT" />
 
     <DataType
-        description="View with front shift count."
-        displayName="F Shift Count"
+        description="View with front derailleur shift count."
+        displayName="FD Shift Count"
         graphical="true"
         icon="@drawable/ic_hh_gear"
         typeId="DATATYPE_FRONT_SHIFT_COUNT" />
 
     <DataType
-        description="View with rear shift count."
-        displayName="R Shift Count"
+        description="View with rear derailleur shift count."
+        displayName="RD Shift Count"
         graphical="true"
         icon="@drawable/ic_hh_gear"
         typeId="DATATYPE_REAR_SHIFT_COUNT" />

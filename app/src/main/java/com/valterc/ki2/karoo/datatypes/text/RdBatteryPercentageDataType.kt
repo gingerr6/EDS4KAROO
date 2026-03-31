@@ -22,8 +22,8 @@ import kotlinx.coroutines.launch
 import java.util.function.BiConsumer
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2ExtensionContext) :
-    DataTypeImpl(extensionContext.extension, "DATATYPE_SHIFTING_BATTERY_PERCENTAGE") {
+class RdBatteryPercentageDataType(private val extensionContext: Ki2ExtensionContext) :
+    DataTypeImpl(extensionContext.extension, "DATATYPE_RD_BATTERY_PERCENTAGE") {
 
     private val glance = GlanceRemoteViews()
     private var connectionInfo: ConnectionInfo? = null
@@ -47,11 +47,11 @@ class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2Extensi
         }
 
         extensionContext.serviceClient.registerConnectionInfoWeakListener(connectionInfoListener!!)
-        extensionContext.serviceClient.registerBatteryInfoWeakListener(voltageListener!!)
+        extensionContext.serviceClient.registerRdBatteryInfoWeakListener(voltageListener!!)
 
         emitter.setCancellable {
             extensionContext.serviceClient.unregisterConnectionInfoWeakListener(connectionInfoListener!!)
-            extensionContext.serviceClient.unregisterBatteryInfoWeakListener(voltageListener!!)
+            extensionContext.serviceClient.unregisterRdBatteryInfoWeakListener(voltageListener!!)
             connectionInfoListener = null
             voltageListener = null
         }

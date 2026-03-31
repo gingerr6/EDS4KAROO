@@ -250,6 +250,30 @@ public class ServiceClient {
         deviceDataFrontend.unregisterBatteryInfoWeakListener(batteryInfoConsumer);
     }
 
+    public void registerRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        deviceDataFrontend.registerRdBatteryInfoWeakListener(batteryInfoConsumer);
+    }
+
+    public void unregisterRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        deviceDataFrontend.unregisterRdBatteryInfoWeakListener(batteryInfoConsumer);
+    }
+
+    public void registerLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        deviceDataFrontend.registerLShifterVoltageWeakListener(consumer);
+    }
+
+    public void unregisterLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        deviceDataFrontend.unregisterLShifterVoltageWeakListener(consumer);
+    }
+
+    public void registerRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        deviceDataFrontend.registerRShifterVoltageWeakListener(consumer);
+    }
+
+    public void unregisterRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        deviceDataFrontend.unregisterRShifterVoltageWeakListener(consumer);
+    }
+
     /**
      * Register a weak referenced listener that will receive battery info from the all devices.
      *

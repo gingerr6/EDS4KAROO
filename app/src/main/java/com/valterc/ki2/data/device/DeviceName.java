@@ -23,6 +23,7 @@ public final class DeviceName {
     public static String getDefaultName(Context context, DeviceId deviceId) {
         String name = String.valueOf(deviceId.getDeviceNumber());
         return switch (deviceId.getDeviceType()) {
+            case WHEELTOP_SHIFTING -> context.getString(R.string.text_param_wheeltop_name, name);
             case SHIMANO_SHIFTING -> context.getString(R.string.text_param_di2_name, name);
             case SHIMANO_EBIKE -> context.getString(R.string.text_param_steps_name, name);
             case MOCK_SHIFTING -> context.getString(R.string.text_param_mock_name, name);

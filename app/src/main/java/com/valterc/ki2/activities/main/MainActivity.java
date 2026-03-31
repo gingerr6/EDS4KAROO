@@ -1,5 +1,8 @@
 package com.valterc.ki2.activities.main;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,6 +12,7 @@ import android.view.inputmethod.BaseInputConnection;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
@@ -80,6 +84,8 @@ public class MainActivity extends AppCompatActivity {
             dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
         });
 
+        requestBlePermissionsIfNeeded();
+
         if (UpdateStateStore.shouldAutomaticallyCheckForUpdatesInApp(this)) {
             handler.postDelayed(() -> {
                 FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -87,6 +93,21 @@ public class MainActivity extends AppCompatActivity {
                 transaction.replace(R.id.container_update_overlay, UpdateOverlayFragment.newInstance());
                 transaction.commitNow();
             }, TIME_MS_CHECK_FOR_UPDATES);
+        }
+    }
+
+    private void requestBlePermissionsIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.BLUETOOTH_SCAN);
+        }
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.BLUETOOTH_CONNECT);
+        }
+        if (!missing.isEmpty()) {
+            ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), 0);
         }
     }
 

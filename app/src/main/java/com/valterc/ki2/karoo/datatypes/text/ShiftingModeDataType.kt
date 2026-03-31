@@ -32,11 +32,14 @@ class ShiftingModeDataType(private val extensionContext: Ki2ExtensionContext) :
     private var connectionInfo: ConnectionInfo? = null
     private var shiftingInfo: ShiftingInfo? = null
 
+    private var connectionInfoListener: BiConsumer<DeviceId, ConnectionInfo>? = null
+    private var shiftingInfoListener: BiConsumer<DeviceId, ShiftingInfo>? = null
+
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         emitter.onNext(UpdateGraphicConfig(showHeader = true))
         emitter.onNext(ShowCustomStreamState(message = "", color = null))
 
-        val connectionInfoListener =
+        connectionInfoListener =
             BiConsumer<DeviceId, ConnectionInfo> { deviceId: DeviceId, connectionInfo: ConnectionInfo ->
                 this.deviceId = deviceId
                 this.connectionInfo = connectionInfo
@@ -45,7 +48,7 @@ class ShiftingModeDataType(private val extensionContext: Ki2ExtensionContext) :
                 }
             }
 
-        val shiftingInfoConsumer =
+        shiftingInfoListener =
             BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
                 this.shiftingInfo = shiftingInfo
                 CoroutineScope(Dispatchers.IO).launch {
@@ -53,20 +56,14 @@ class ShiftingModeDataType(private val extensionContext: Ki2ExtensionContext) :
                 }
             }
 
-        extensionContext.serviceClient.registerConnectionInfoWeakListener(
-            connectionInfoListener
-        )
-        extensionContext.serviceClient.registerShiftingInfoWeakListener(
-            shiftingInfoConsumer
-        )
+        extensionContext.serviceClient.registerConnectionInfoWeakListener(connectionInfoListener!!)
+        extensionContext.serviceClient.registerShiftingInfoWeakListener(shiftingInfoListener!!)
 
         emitter.setCancellable {
-            extensionContext.serviceClient.unregisterConnectionInfoWeakListener(
-                connectionInfoListener
-            )
-            extensionContext.serviceClient.unregisterShiftingInfoWeakListener(
-                shiftingInfoConsumer
-            )
+            extensionContext.serviceClient.unregisterConnectionInfoWeakListener(connectionInfoListener!!)
+            extensionContext.serviceClient.unregisterShiftingInfoWeakListener(shiftingInfoListener!!)
+            connectionInfoListener = null
+            shiftingInfoListener = null
         }
     }
 

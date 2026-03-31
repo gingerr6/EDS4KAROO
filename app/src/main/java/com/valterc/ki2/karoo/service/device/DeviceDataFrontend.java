@@ -51,6 +51,36 @@ public class DeviceDataFrontend {
         }
     }, callback -> service.registerBatteryListener(callback), callback -> service.unregisterBatteryListener(callback));
 
+    private final ServiceCallbackRegistration<IBatteryCallback> registrationRdBatteryInfo = new ServiceCallbackRegistration<>(new IBatteryCallback.Stub() {
+        @Override
+        public void onBattery(DeviceId deviceId, BatteryInfo batteryInfo) {
+            handler.post(() -> {
+                dataRouter.onRdBattery(deviceId, batteryInfo);
+                maybeStopRdBatteryEvents();
+            });
+        }
+    }, callback -> service.registerRdBatteryListener(callback), callback -> service.unregisterRdBatteryListener(callback));
+
+    private final ServiceCallbackRegistration<IBatteryCallback> registrationLShifterVoltage = new ServiceCallbackRegistration<>(new IBatteryCallback.Stub() {
+        @Override
+        public void onBattery(DeviceId deviceId, BatteryInfo batteryInfo) {
+            handler.post(() -> {
+                dataRouter.onLShifterVoltage(deviceId, batteryInfo);
+                maybeStopLShifterVoltageEvents();
+            });
+        }
+    }, callback -> service.registerLShifterVoltageListener(callback), callback -> service.unregisterLShifterVoltageListener(callback));
+
+    private final ServiceCallbackRegistration<IBatteryCallback> registrationRShifterVoltage = new ServiceCallbackRegistration<>(new IBatteryCallback.Stub() {
+        @Override
+        public void onBattery(DeviceId deviceId, BatteryInfo batteryInfo) {
+            handler.post(() -> {
+                dataRouter.onRShifterVoltage(deviceId, batteryInfo);
+                maybeStopRShifterVoltageEvents();
+            });
+        }
+    }, callback -> service.registerRShifterVoltageListener(callback), callback -> service.unregisterRShifterVoltageListener(callback));
+
     private final ServiceCallbackRegistration<IShiftingCallback> registrationShiftingInfo = new ServiceCallbackRegistration<>(new IShiftingCallback.Stub() {
         @Override
         public void onShifting(DeviceId deviceId, ShiftingInfo shiftingInfo) {
@@ -92,6 +122,9 @@ public class DeviceDataFrontend {
 
         registrationConnectionInfo.setUnregistered();
         registrationBatteryInfo.setUnregistered();
+        registrationRdBatteryInfo.setUnregistered();
+        registrationLShifterVoltage.setUnregistered();
+        registrationRShifterVoltage.setUnregistered();
         registrationShiftingInfo.setUnregistered();
         registrationAction.setUnregistered();
         registrationDevicePreferences.setUnregistered();
@@ -104,6 +137,9 @@ public class DeviceDataFrontend {
     private void maybeStartEvents() {
         maybeStartConnectionEvents();
         maybeStartBatteryEvents();
+        maybeStartRdBatteryEvents();
+        maybeStartLShifterVoltageEvents();
+        maybeStartRShifterVoltageEvents();
         maybeStartActionEvents();
         maybeStartShiftingEvents();
         maybeStartDevicePreferencesEvents();
@@ -217,6 +253,92 @@ public class DeviceDataFrontend {
         }
 
         registrationBatteryInfo.unregister();
+    }
+
+    public void registerRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        handler.post(() -> {
+            dataRouter.registerRdBatteryInfoWeakListener(batteryInfoConsumer);
+            maybeStartEvents();
+        });
+    }
+
+    public void unregisterRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        handler.post(() -> {
+            dataRouter.unregisterRdBatteryInfoWeakListener(batteryInfoConsumer);
+            maybeStopRdBatteryEvents();
+        });
+    }
+
+    private void maybeStartRdBatteryEvents() {
+        if (service == null) {
+            return;
+        }
+
+        if (!dataRouter.hasRdBatteryInfoListeners()) {
+            return;
+        }
+
+        registrationRdBatteryInfo.register();
+    }
+
+    private void maybeStopRdBatteryEvents() {
+        if (service == null) {
+            return;
+        }
+
+        if (dataRouter.hasRdBatteryInfoListeners()) {
+            return;
+        }
+
+        registrationRdBatteryInfo.unregister();
+    }
+
+    public void registerLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        handler.post(() -> {
+            dataRouter.registerLShifterVoltageWeakListener(consumer);
+            maybeStartEvents();
+        });
+    }
+
+    public void unregisterLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        handler.post(() -> {
+            dataRouter.unregisterLShifterVoltageWeakListener(consumer);
+            maybeStopLShifterVoltageEvents();
+        });
+    }
+
+    private void maybeStartLShifterVoltageEvents() {
+        if (service == null || !dataRouter.hasLShifterVoltageListeners()) return;
+        registrationLShifterVoltage.register();
+    }
+
+    private void maybeStopLShifterVoltageEvents() {
+        if (service == null || dataRouter.hasLShifterVoltageListeners()) return;
+        registrationLShifterVoltage.unregister();
+    }
+
+    public void registerRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        handler.post(() -> {
+            dataRouter.registerRShifterVoltageWeakListener(consumer);
+            maybeStartEvents();
+        });
+    }
+
+    public void unregisterRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        handler.post(() -> {
+            dataRouter.unregisterRShifterVoltageWeakListener(consumer);
+            maybeStopRShifterVoltageEvents();
+        });
+    }
+
+    private void maybeStartRShifterVoltageEvents() {
+        if (service == null || !dataRouter.hasRShifterVoltageListeners()) return;
+        registrationRShifterVoltage.register();
+    }
+
+    private void maybeStopRShifterVoltageEvents() {
+        if (service == null || dataRouter.hasRShifterVoltageListeners()) return;
+        registrationRShifterVoltage.unregister();
     }
 
     public void registerShiftingInfoWeakListener(BiConsumer<DeviceId, ShiftingInfo> shiftingInfoConsumer) {

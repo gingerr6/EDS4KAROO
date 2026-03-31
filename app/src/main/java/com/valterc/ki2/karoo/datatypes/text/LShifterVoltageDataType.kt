@@ -22,8 +22,8 @@ import kotlinx.coroutines.launch
 import java.util.function.BiConsumer
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2ExtensionContext) :
-    DataTypeImpl(extensionContext.extension, "DATATYPE_SHIFTING_BATTERY_PERCENTAGE") {
+class LShifterVoltageDataType(private val extensionContext: Ki2ExtensionContext) :
+    DataTypeImpl(extensionContext.extension, "DATATYPE_L_SHIFTER_VOLTAGE") {
 
     private val glance = GlanceRemoteViews()
     private var connectionInfo: ConnectionInfo? = null
@@ -47,11 +47,11 @@ class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2Extensi
         }
 
         extensionContext.serviceClient.registerConnectionInfoWeakListener(connectionInfoListener!!)
-        extensionContext.serviceClient.registerBatteryInfoWeakListener(voltageListener!!)
+        extensionContext.serviceClient.registerLShifterVoltageWeakListener(voltageListener!!)
 
         emitter.setCancellable {
             extensionContext.serviceClient.unregisterConnectionInfoWeakListener(connectionInfoListener!!)
-            extensionContext.serviceClient.unregisterBatteryInfoWeakListener(voltageListener!!)
+            extensionContext.serviceClient.unregisterLShifterVoltageWeakListener(voltageListener!!)
             connectionInfoListener = null
             voltageListener = null
         }
@@ -59,7 +59,7 @@ class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2Extensi
 
     private suspend fun emitView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         val result = when {
-            rawValue != null && rawValue!! > 0 ->
+            rawValue != null ->
                 glance.compose(context, DpSize.Unspecified) {
                     TextView(
                         "%.2fV".format(rawValue!! / 100.0),

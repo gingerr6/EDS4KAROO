@@ -23,12 +23,18 @@ public class DeviceDataRouter {
 
     private final BiDataStreamWeakListenerList<DeviceId, ConnectionInfo> connectionInfoListeners;
     private final BiDataStreamWeakListenerList<DeviceId, BatteryInfo> batteryInfoListeners;
+    private final BiDataStreamWeakListenerList<DeviceId, BatteryInfo> rdBatteryInfoListeners;
+    private final BiDataStreamWeakListenerList<DeviceId, BatteryInfo> lShifterVoltageListeners;
+    private final BiDataStreamWeakListenerList<DeviceId, BatteryInfo> rShifterVoltageListeners;
     private final BiDataStreamWeakListenerList<DeviceId, ShiftingInfo> shiftingInfoListeners;
     private final BiDataStreamWeakListenerList<DeviceId, DevicePreferencesView> devicePreferencesListener;
 
 
     private final KeyedDataStreamWeakListenerList<DeviceId, ConnectionInfo> connectionInfoUnfilteredListeners;
     private final KeyedDataStreamWeakListenerList<DeviceId, BatteryInfo> batteryInfoUnfilteredListeners;
+    private final KeyedDataStreamWeakListenerList<DeviceId, BatteryInfo> rdBatteryInfoUnfilteredListeners;
+    private final KeyedDataStreamWeakListenerList<DeviceId, BatteryInfo> lShifterVoltageUnfilteredListeners;
+    private final KeyedDataStreamWeakListenerList<DeviceId, BatteryInfo> rShifterVoltageUnfilteredListeners;
     private final KeyedDataStreamWeakListenerList<DeviceId, ShiftingInfo> shiftingInfoUnfilteredListeners;
     private final KeyedDataStreamWeakListenerList<DeviceId, DevicePreferencesView> devicePreferencesUnfilteredListener;
 
@@ -43,11 +49,17 @@ public class DeviceDataRouter {
 
         connectionInfoListeners = new BiDataStreamWeakListenerList<>();
         batteryInfoListeners = new BiDataStreamWeakListenerList<>();
+        rdBatteryInfoListeners = new BiDataStreamWeakListenerList<>();
+        lShifterVoltageListeners = new BiDataStreamWeakListenerList<>();
+        rShifterVoltageListeners = new BiDataStreamWeakListenerList<>();
         shiftingInfoListeners = new BiDataStreamWeakListenerList<>();
         devicePreferencesListener = new BiDataStreamWeakListenerList<>();
 
         connectionInfoUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
         batteryInfoUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
+        rdBatteryInfoUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
+        lShifterVoltageUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
+        rShifterVoltageUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
         shiftingInfoUnfilteredListeners = new KeyedDataStreamWeakListenerList<>();
         devicePreferencesUnfilteredListener = new KeyedDataStreamWeakListenerList<>();
 
@@ -94,6 +106,42 @@ public class DeviceDataRouter {
 
     public boolean hasBatteryInfoListeners() {
         return batteryInfoListeners.hasListeners() || batteryInfoUnfilteredListeners.hasListeners();
+    }
+
+    public void registerRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        rdBatteryInfoListeners.addListener(batteryInfoConsumer);
+    }
+
+    public void unregisterRdBatteryInfoWeakListener(BiConsumer<DeviceId, BatteryInfo> batteryInfoConsumer) {
+        rdBatteryInfoListeners.removeListener(batteryInfoConsumer);
+    }
+
+    public boolean hasRdBatteryInfoListeners() {
+        return rdBatteryInfoListeners.hasListeners() || rdBatteryInfoUnfilteredListeners.hasListeners();
+    }
+
+    public void registerLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        lShifterVoltageListeners.addListener(consumer);
+    }
+
+    public void unregisterLShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        lShifterVoltageListeners.removeListener(consumer);
+    }
+
+    public boolean hasLShifterVoltageListeners() {
+        return lShifterVoltageListeners.hasListeners() || lShifterVoltageUnfilteredListeners.hasListeners();
+    }
+
+    public void registerRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        rShifterVoltageListeners.addListener(consumer);
+    }
+
+    public void unregisterRShifterVoltageWeakListener(BiConsumer<DeviceId, BatteryInfo> consumer) {
+        rShifterVoltageListeners.removeListener(consumer);
+    }
+
+    public boolean hasRShifterVoltageListeners() {
+        return rShifterVoltageListeners.hasListeners() || rShifterVoltageUnfilteredListeners.hasListeners();
     }
 
     public void registerShiftingInfoWeakListener(BiConsumer<DeviceId, ShiftingInfo> shiftingInfoConsumer) {
@@ -245,6 +293,28 @@ public class DeviceDataRouter {
         }
 
         batteryInfoUnfilteredListeners.pushData(deviceId, batteryInfo);
+    }
+
+    public void onRdBattery(DeviceId deviceId, BatteryInfo batteryInfo) {
+        if (Objects.equals(deviceId, currentDeviceId)) {
+            rdBatteryInfoListeners.pushData(deviceId, batteryInfo);
+        }
+
+        rdBatteryInfoUnfilteredListeners.pushData(deviceId, batteryInfo);
+    }
+
+    public void onLShifterVoltage(DeviceId deviceId, BatteryInfo info) {
+        if (Objects.equals(deviceId, currentDeviceId)) {
+            lShifterVoltageListeners.pushData(deviceId, info);
+        }
+        lShifterVoltageUnfilteredListeners.pushData(deviceId, info);
+    }
+
+    public void onRShifterVoltage(DeviceId deviceId, BatteryInfo info) {
+        if (Objects.equals(deviceId, currentDeviceId)) {
+            rShifterVoltageListeners.pushData(deviceId, info);
+        }
+        rShifterVoltageUnfilteredListeners.pushData(deviceId, info);
     }
 
     public void onShifting(DeviceId deviceId, ShiftingInfo shiftingInfo) {

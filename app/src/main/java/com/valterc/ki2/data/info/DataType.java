@@ -9,6 +9,9 @@ public enum DataType {
     KEY(4, true),
     MANUFACTURER_INFO(5, false),
     SIGNAL(6, true),
+    BATTERY_RD(7, false),
+    SHIFTER_L_VOLTAGE(8, false),
+    SHIFTER_R_VOLTAGE(9, false),
     OTHER(255, false);
 
     public static DataType fromFlag(int flag) {

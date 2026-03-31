@@ -50,6 +50,11 @@ public class SearchDevicesAdapter extends RecyclerView.Adapter<SearchDevicesView
         DeviceId deviceId = devices.get(position);
 
         switch (deviceId.getDeviceType()) {
+            case WHEELTOP_SHIFTING:
+                holder.getImageViewIcon().setImageResource(R.drawable.ic_di2);
+                holder.getButtonAdd().setVisibility(View.VISIBLE);
+                break;
+
             case SHIMANO_SHIFTING:
                 holder.getImageViewIcon().setImageResource(R.drawable.ic_di2);
                 holder.getButtonAdd().setVisibility(View.VISIBLE);

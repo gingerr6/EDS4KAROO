@@ -15,6 +15,9 @@ import com.valterc.ki2.karoo.datatypes.text.RearGearIndexDataType
 import com.valterc.ki2.karoo.datatypes.text.RearGearSizeDataType
 import com.valterc.ki2.karoo.datatypes.text.RearShiftCountDataType
 import com.valterc.ki2.karoo.datatypes.text.ShiftCountDataType
+import com.valterc.ki2.karoo.datatypes.text.LShifterVoltageDataType
+import com.valterc.ki2.karoo.datatypes.text.RdBatteryPercentageDataType
+import com.valterc.ki2.karoo.datatypes.text.RShifterVoltageDataType
 import com.valterc.ki2.karoo.datatypes.text.ShiftingBatteryPercentageDataType
 import com.valterc.ki2.karoo.datatypes.text.ShiftingModeDataType
 import com.valterc.ki2.karoo.datatypes.visual.BikeBatteryVisualDataType
@@ -62,6 +65,9 @@ class Ki2ExtensionService : KarooExtension("ki2", BuildConfig.VERSION_NAME) {
     override val types by lazy {
         listOf(
             ShiftingBatteryPercentageDataType(extensionContext),
+            RdBatteryPercentageDataType(extensionContext),
+            LShifterVoltageDataType(extensionContext),
+            RShifterVoltageDataType(extensionContext),
             ShiftingModeDataType(extensionContext),
             GearRatioDataType(extensionContext),
             GearsIndexDataType(extensionContext),
@@ -96,6 +102,7 @@ class Ki2ExtensionService : KarooExtension("ki2", BuildConfig.VERSION_NAME) {
                 handlers.add(OverlayWindowHandler(this, extensionContext))
                 handlers.add(ShiftingAudioAlertHandler(extensionContext))
                 handlers.add(BatteryAlertHandler(extensionContext))
+                handlers.add(extensionContext.shiftCountHandler) // lazy init here, after karooSystem.connect()
             }
         }
     }
