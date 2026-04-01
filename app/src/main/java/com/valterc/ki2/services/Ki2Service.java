@@ -650,6 +650,14 @@ public class Ki2Service extends Service
                         .collect(Collectors.toList());
 
                 connectionsDataManager.addConnections(enabledDeviceIds);
+                // Set CONNECTING status for devices that aren't yet connected
+                for (DeviceId id : enabledDeviceIds) {
+                    String mac = BleDeviceMapper.toMacAddress(id);
+                    BleDeviceConnection conn = bleConnectionManager.getConnection(mac);
+                    if (conn == null || !conn.isReady()) {
+                        onConnectionStatus(id, ConnectionStatus.CONNECTING);
+                    }
+                }
                 bleConnectionManager.connectOnly(enabledBleDevices, this);
                 connectionsDataManager.setConnections(enabledDeviceIds);
             }
