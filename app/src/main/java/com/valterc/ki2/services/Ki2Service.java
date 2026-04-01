@@ -640,9 +640,11 @@ public class Ki2Service extends Service
 
         if (hasActiveCallbacks()) {
             if (bleManager.isBluetoothReady()) {
+                // Only connect to one EDS device at a time (first enabled)
                 List<DeviceId> enabledDeviceIds = allDevices.stream()
                         .filter(id -> id.getDeviceType() == DeviceType.WHEELTOP_SHIFTING)
                         .filter(id -> new DevicePreferences(this, id).isEnabled())
+                        .limit(1)
                         .collect(Collectors.toList());
 
                 List<BluetoothDevice> enabledBleDevices = enabledDeviceIds.stream()
