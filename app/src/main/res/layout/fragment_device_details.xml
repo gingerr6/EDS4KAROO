@@ -183,7 +183,9 @@
                         android:text="@string/text_reconnect"
                         android:textAlignment="viewStart"
                         android:textAllCaps="false"
-                        app:icon="@drawable/ic_refresh" />
+                        android:textColor="@color/hh_orange"
+                        app:icon="@drawable/ic_refresh"
+                        app:iconTint="@color/hh_orange" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -203,7 +205,9 @@
                         android:text="@string/text_rename"
                         android:textAlignment="viewStart"
                         android:textAllCaps="false"
-                        app:icon="@drawable/ic_edit" />
+                        android:textColor="@color/hh_orange"
+                        app:icon="@drawable/ic_edit"
+                        app:iconTint="@color/hh_orange" />
                 </LinearLayout>
 
                 <LinearLayout
