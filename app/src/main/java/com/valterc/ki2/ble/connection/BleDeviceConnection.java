@@ -47,7 +47,7 @@ public class BleDeviceConnection {
     private static final int RECONNECT_DELAY_MS        = 2_000;
     private static final int WRITE_TIMEOUT_MS           = 3_000;
     private static final long BATTERY_REFRESH_INTERVAL_MS = 5 * 60 * 1_000L; // 5 minutes
-    private static final long RSSI_POLL_INTERVAL_MS      = 5_000L;
+    private static final long RSSI_POLL_INTERVAL_MS      = 30_000L; // 30 seconds
     private static final int MAX_CONNECT_RETRIES        = 3;
 
     private final Context context;
