@@ -130,26 +130,6 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="1dp"
-                android:background="@color/white">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_device_details_rename"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:backgroundTint="@color/white"
-                    android:focusable="false"
-                    android:focusableInTouchMode="false"
-                    android:text="@string/text_rename"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    app:icon="@drawable/ic_edit" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:background="@color/grey_100"
                 android:baselineAligned="false"
                 android:orientation="vertical"
@@ -204,6 +184,26 @@
                         android:textAlignment="viewStart"
                         android:textAllCaps="false"
                         app:icon="@drawable/ic_refresh" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="1dp"
+                    android:background="@color/white">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_device_details_rename"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:backgroundTint="@color/white"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:text="@string/text_rename"
+                        android:textAlignment="viewStart"
+                        android:textAllCaps="false"
+                        app:icon="@drawable/ic_edit" />
                 </LinearLayout>
 
                 <LinearLayout
