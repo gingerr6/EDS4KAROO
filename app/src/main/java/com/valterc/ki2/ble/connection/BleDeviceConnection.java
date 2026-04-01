@@ -44,9 +44,10 @@ public class BleDeviceConnection {
         DISCONNECTED
     }
 
-    private static final int RECONNECT_DELAY_MS        = 5_000;
+    private static final int RECONNECT_DELAY_MS        = 2_000;
     private static final int WRITE_TIMEOUT_MS           = 3_000;
     private static final long BATTERY_REFRESH_INTERVAL_MS = 5 * 60 * 1_000L; // 5 minutes
+    private static final int MAX_CONNECT_RETRIES        = 3;
 
     private final Context context;
     private final BluetoothDevice device;
@@ -62,6 +63,8 @@ public class BleDeviceConnection {
     private int nextBlock;
     private final StringBuilder infoBuffer = new StringBuilder();
     private final Runnable refreshBatteryRunnable = this::refreshBatteryInfo;
+
+    private int connectRetries = 0;
 
     // Cached gear state
     private int frontGear = -1;  // -1 = never reported
@@ -99,7 +102,7 @@ public class BleDeviceConnection {
             BluetoothGattService nus = gatt.getService(EdsProtocol.UUID_NUS_SERVICE);
             if (nus == null) {
                 Timber.w("[%s] NUS service not found", deviceAddress());
-                disconnect();
+                retryOrDisconnect();
                 return;
             }
 
@@ -108,7 +111,7 @@ public class BleDeviceConnection {
 
             if (rxCharacteristic == null || txCharacteristic == null) {
                 Timber.w("[%s] NUS characteristics not found", deviceAddress());
-                disconnect();
+                retryOrDisconnect();
                 return;
             }
 
@@ -173,7 +176,7 @@ public class BleDeviceConnection {
     /** Initiate a GATT connection to the device. */
     public void connect() {
         if (state != State.IDLE && state != State.DISCONNECTED) return;
-        Timber.i("[%s] Connecting…", deviceAddress());
+        Timber.i("[%s] Connecting… (attempt %d)", deviceAddress(), connectRetries + 1);
         setState(State.CONNECTING);
         infoBuffer.setLength(0);
         nextBlock = 0;
@@ -351,6 +354,7 @@ public class BleDeviceConnection {
 
         boolean isRefresh = (state == State.REFRESHING_INFO);
         setState(State.READY);
+        connectRetries = 0;
 
         if (!isRefresh) {
             listener.onConnected(device);
@@ -467,6 +471,20 @@ public class BleDeviceConnection {
             }
         } catch (SecurityException e) {
             Timber.e(e, "Permission denied on writeCharacteristic");
+        }
+    }
+
+    private void retryOrDisconnect() {
+        closeGatt();
+        if (connectRetries < MAX_CONNECT_RETRIES) {
+            connectRetries++;
+            Timber.i("[%s] Retrying connection in %dms (attempt %d/%d)",
+                    deviceAddress(), RECONNECT_DELAY_MS, connectRetries, MAX_CONNECT_RETRIES);
+            setState(State.DISCONNECTED);
+            handler.postDelayed(this::connect, RECONNECT_DELAY_MS);
+        } else {
+            Timber.w("[%s] Max retries reached, giving up", deviceAddress());
+            handleDisconnect();
         }
     }
 
