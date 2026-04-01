@@ -66,9 +66,12 @@ public class BleDeviceConnection {
 
     private int connectRetries = 0;
 
+    // Wheeltop FD always has 2 chainrings regardless of Q_TOTAL
+    private static final int FD_GEAR_MAX = 2;
+
     // Cached gear state
     private int frontGear = -1;  // -1 = never reported
-    private int frontGearMax = 1;
+    private int frontGearMax = FD_GEAR_MAX;
     private int rearGear = -1;   // -1 = never reported
     private int rearGearMax = 11; // default; updated from device info
 
@@ -340,9 +343,11 @@ public class BleDeviceConnection {
         rearGearMax = parseIntSafe(EdsProtocol.parseInfoValue(info, "TOTAL_CNT"), rearGearMax);
         int initialRearGear = parseIntSafe(EdsProtocol.parseInfoValue(info, "NUM"), -1);
 
-        // Front derailleur total positions and current position
-        frontGearMax = parseIntSafe(EdsProtocol.parseInfoValue(info, "Q_TOTAL"), frontGearMax);
-        int initialFrontGear = parseIntSafe(EdsProtocol.parseInfoValue(info, "Q_NUM"), -1);
+        // Front derailleur: Q_TOTAL/Q_NUM are raw micro-positions (1-6);
+        // map through mapFrontGear() to get actual chainring (1=small, 2=big)
+        frontGearMax = FD_GEAR_MAX;
+        int rawFrontPos = parseIntSafe(EdsProtocol.parseInfoValue(info, "Q_NUM"), -1);
+        int initialFrontGear = rawFrontPos > 0 ? mapFrontGear(rawFrontPos) : -1;
 
         int leftPowerRaw  = parseIntSafe(lPower, 0);
         int rightPowerRaw = parseIntSafe(rPower, 0);
@@ -392,12 +397,29 @@ public class BleDeviceConnection {
         writePacket(EdsProtocol.buildStartReadPacket(sessionKey));
     }
 
+    /**
+     * Map raw FD position (1-6) to chainring gear (1=small, 2=big).
+     * Wheeltop FD has 6 micro-positions; only resting positions matter:
+     *   Position 5 = small chainring (gear 1)
+     *   Position 3 = big chainring (gear 2)
+     *   Other positions are transient micro-shifts — ignored.
+     * Returns -1 for transient positions.
+     */
+    private static int mapFrontGear(int rawPosition) {
+        switch (rawPosition) {
+            case 5: return 1; // small chainring
+            case 3: return 2; // big chainring
+            default: return -1; // transient micro-shift, ignore
+        }
+    }
+
     private void onFrontStatusReport(EdsPacket packet) {
         if (packet.payload.length < 5) return;
         Timber.d("[%s] FD raw payload: %s", deviceAddress(), bytesToHex(packet.payload));
-        // Gear index is at byte[4] (same as RD); byte[5] is not part of the gear index
-        int gear = (packet.payload[4] & 0xFF);
-        if (gear < 1) gear = 1;
+        int rawPosition = (packet.payload[4] & 0xFF);
+        int gear = mapFrontGear(rawPosition);
+        if (gear < 0) return; // transient micro-shift, ignore
+
         // Only emit gear events when READY (gear max values aren't set until info read completes)
         if (state != State.READY) {
             frontGear = gear;
@@ -405,8 +427,8 @@ public class BleDeviceConnection {
         }
         if (gear != frontGear) {
             frontGear = gear;
-            Timber.d("[%s] FD gear %d/%d", deviceAddress(), frontGear, frontGearMax);
-            listener.onFrontGearChanged(device, frontGear, frontGearMax);
+            Timber.d("[%s] FD gear %d/%d", deviceAddress(), frontGear, FD_GEAR_MAX);
+            listener.onFrontGearChanged(device, frontGear, FD_GEAR_MAX);
         }
     }
 
