@@ -31,11 +31,15 @@ class RearGearIndexDataType(private val extensionContext: Ki2ExtensionContext) :
     private var connectionInfo: ConnectionInfo? = null
     private var shiftingGearingHelper = ShiftingGearingHelper(extensionContext.context)
 
+    private var connectionInfoListener: BiConsumer<DeviceId, ConnectionInfo>? = null
+    private var devicePreferencesConsumer: BiConsumer<DeviceId, DevicePreferencesView>? = null
+    private var shiftingInfoConsumer: BiConsumer<DeviceId, ShiftingInfo>? = null
+
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         emitter.onNext(UpdateGraphicConfig(showHeader = true))
         emitter.onNext(ShowCustomStreamState(message = "", color = null))
 
-        val connectionInfoListener =
+        connectionInfoListener =
             BiConsumer<DeviceId, ConnectionInfo> { _: DeviceId, connectionInfo: ConnectionInfo ->
                 this.connectionInfo = connectionInfo
                 CoroutineScope(Dispatchers.IO).launch {
@@ -43,7 +47,7 @@ class RearGearIndexDataType(private val extensionContext: Ki2ExtensionContext) :
                 }
             }
 
-        val devicePreferencesConsumer =
+        devicePreferencesConsumer =
             BiConsumer<DeviceId, DevicePreferencesView> { _: DeviceId, devicePreferences: DevicePreferencesView ->
                 shiftingGearingHelper.setDevicePreferences(devicePreferences)
                 CoroutineScope(Dispatchers.IO).launch {
@@ -51,7 +55,7 @@ class RearGearIndexDataType(private val extensionContext: Ki2ExtensionContext) :
                 }
             }
 
-        val shiftingInfoConsumer =
+        shiftingInfoConsumer =
             BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
                 shiftingGearingHelper.setShiftingInfo(shiftingInfo)
                 CoroutineScope(Dispatchers.IO).launch {
@@ -60,25 +64,28 @@ class RearGearIndexDataType(private val extensionContext: Ki2ExtensionContext) :
             }
 
         extensionContext.serviceClient.registerConnectionInfoWeakListener(
-            connectionInfoListener
+            connectionInfoListener!!
         )
         extensionContext.serviceClient.registerDevicePreferencesWeakListener(
-            devicePreferencesConsumer
+            devicePreferencesConsumer!!
         )
         extensionContext.serviceClient.registerShiftingInfoWeakListener(
-            shiftingInfoConsumer
+            shiftingInfoConsumer!!
         )
 
         emitter.setCancellable {
             extensionContext.serviceClient.unregisterConnectionInfoWeakListener(
-                connectionInfoListener
+                connectionInfoListener!!
             )
             extensionContext.serviceClient.unregisterDevicePreferencesWeakListener(
-                devicePreferencesConsumer
+                devicePreferencesConsumer!!
             )
             extensionContext.serviceClient.unregisterShiftingInfoWeakListener(
-                shiftingInfoConsumer
+                shiftingInfoConsumer!!
             )
+            connectionInfoListener = null
+            devicePreferencesConsumer = null
+            shiftingInfoConsumer = null
         }
     }
 
