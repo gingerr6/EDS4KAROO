@@ -32,7 +32,6 @@ import com.valterc.ki2.data.preferences.device.DevicePreferences;
 import com.valterc.ki2.data.shifting.FrontTeethPattern;
 import com.valterc.ki2.data.shifting.RearTeethPattern;
 import com.valterc.ki2.data.shifting.ShiftingInfo;
-import com.valterc.ki2.data.switches.SwitchType;
 import com.valterc.ki2.fragments.IKarooKeyListener;
 import com.valterc.ki2.services.Ki2Service;
 import com.valterc.ki2.views.DrivetrainView;
@@ -73,10 +72,6 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
     private final Handler handler = new Handler();
     private boolean serviceBound;
     private DeviceDetailsViewModel viewModel;
-    private long timestampSwitchCH1;
-    private long timestampSwitchCH2;
-    private long timestampSwitchCH3;
-    private long timestampSwitchCH4;
 
     public static DeviceDetailsFragment newInstance(DeviceId deviceId) {
         DeviceDetailsFragment deviceDetailsFragment = new DeviceDetailsFragment();
@@ -200,11 +195,6 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
                 Toast.makeText(requireContext(), R.string.text_unable_to_change_shifting_mode, Toast.LENGTH_SHORT).show();
             }
         });
-
-        TextView textViewSwitchCH1 = view.findViewById(R.id.textview_device_details_switch_ch1);
-        TextView textViewSwitchCH2 = view.findViewById(R.id.textview_device_details_switch_ch2);
-        TextView textViewSwitchCH3 = view.findViewById(R.id.textview_device_details_switch_ch3);
-        TextView textViewSwitchCH4 = view.findViewById(R.id.textview_device_details_switch_ch4);
 
         Button buttonRemove = view.findViewById(R.id.button_device_details_remove);
         buttonRemove.setOnClickListener(v -> new AlertDialog.Builder(requireContext(), R.style.AlertDialogStyle)
@@ -392,73 +382,6 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
             linearLayoutWaitingForDataShifting.setVisibility(View.GONE);
 
             setGearingText(textViewGearing, viewModel.getDevicePreferences(requireContext()), shiftingInfo);
-        });
-
-        viewModel.getSwitchEvent().observe(getViewLifecycleOwner(), switchEvent -> {
-            TextView textViewSwitch;
-
-            if (switchEvent.getType() == SwitchType.D_FLY_CH1) {
-                textViewSwitch = textViewSwitchCH1;
-                timestampSwitchCH1 = System.currentTimeMillis();
-            } else if (switchEvent.getType() == SwitchType.D_FLY_CH2) {
-                textViewSwitch = textViewSwitchCH2;
-                timestampSwitchCH2 = System.currentTimeMillis();
-            } else if (switchEvent.getType() == SwitchType.D_FLY_CH3) {
-                textViewSwitch = textViewSwitchCH3;
-                timestampSwitchCH3 = System.currentTimeMillis();
-            } else if (switchEvent.getType() == SwitchType.D_FLY_CH4) {
-                textViewSwitch = textViewSwitchCH4;
-                timestampSwitchCH4 = System.currentTimeMillis();
-            } else {
-                return;
-            }
-
-            boolean autoClear = false;
-
-            switch (switchEvent.getCommand()) {
-                case LONG_PRESS_UP:
-                case NO_SWITCH:
-                    textViewSwitch.setText(R.string.dash);
-                    break;
-
-                case SINGLE_CLICK:
-                    textViewSwitch.setText(R.string.text_single_press);
-                    autoClear = true;
-                    break;
-
-                case DOUBLE_CLICK:
-                    textViewSwitch.setText(R.string.text_double_press);
-                    autoClear = true;
-                    break;
-
-                case LONG_PRESS_DOWN:
-                case LONG_PRESS_CONTINUE:
-                    textViewSwitch.setText(R.string.text_holding);
-                    break;
-            }
-
-            if (autoClear) {
-                handler.postDelayed(() -> {
-                    if (switchEvent.getType() == SwitchType.D_FLY_CH1) {
-                        if (System.currentTimeMillis() - timestampSwitchCH1 > SWITCH_AUTO_CLEAR_DELAY_MS * 0.8) {
-                            textViewSwitchCH1.setText(R.string.dash);
-                        }
-                    } else if (switchEvent.getType() == SwitchType.D_FLY_CH2) {
-                        if (System.currentTimeMillis() - timestampSwitchCH2 > SWITCH_AUTO_CLEAR_DELAY_MS * 0.8) {
-                            textViewSwitchCH2.setText(R.string.dash);
-                        }
-                    } else if (switchEvent.getType() == SwitchType.D_FLY_CH3) {
-                        if (System.currentTimeMillis() - timestampSwitchCH3 > SWITCH_AUTO_CLEAR_DELAY_MS * 0.8) {
-                            textViewSwitchCH3.setText(R.string.dash);
-                        }
-                    } else if (switchEvent.getType() == SwitchType.D_FLY_CH4) {
-                        if (System.currentTimeMillis() - timestampSwitchCH4 > SWITCH_AUTO_CLEAR_DELAY_MS * 0.8) {
-                            textViewSwitchCH4.setText(R.string.dash);
-                        }
-                    }
-                }, SWITCH_AUTO_CLEAR_DELAY_MS);
-            }
-
         });
 
     }
