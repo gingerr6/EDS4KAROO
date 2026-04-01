@@ -1,4 +1,6 @@
 # Ki2/EDS
+WORK IN PROGRESS!!!
+Borrowed the KI2 hardwork.
 
 Ki2/EDS is an extension for Hammerhead Karoo cycling computers. It is a companion app for electronic shifting groupsets produced by a Japanese company.
 
