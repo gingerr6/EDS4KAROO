@@ -202,6 +202,11 @@ public class BleDeviceConnection {
         return state == State.READY;
     }
 
+    /** Returns true if the connection is in progress (connecting, handshaking, or reading info). */
+    public boolean isActive() {
+        return state != State.IDLE && state != State.DISCONNECTED;
+    }
+
     public BluetoothDevice getDevice() {
         return device;
     }
@@ -385,11 +390,15 @@ public class BleDeviceConnection {
 
     private void onFrontStatusReport(EdsPacket packet) {
         if (packet.payload.length < 6) return;
-        // Log full payload for protocol debugging
         Timber.d("[%s] FD raw payload: %s", deviceAddress(), bytesToHex(packet.payload));
         // Payload bytes: [0..1] FD position (LE u16), [2..3] unknown, [4..5] gear index (LE u16)
         int gear = (packet.payload[4] & 0xFF) | ((packet.payload[5] & 0xFF) << 8);
         if (gear < 1) gear = 1;
+        // Only emit gear events when READY (gear max values aren't set until info read completes)
+        if (state != State.READY) {
+            frontGear = gear;
+            return;
+        }
         if (gear != frontGear) {
             frontGear = gear;
             Timber.d("[%s] FD gear %d/%d", deviceAddress(), frontGear, frontGearMax);
@@ -399,11 +408,15 @@ public class BleDeviceConnection {
 
     private void onRearGearReport(EdsPacket packet) {
         if (packet.payload.length < 5) return;
-        // Log full payload for protocol debugging
         Timber.d("[%s] RD raw payload: %s", deviceAddress(), bytesToHex(packet.payload));
         // Gear index is at byte[4]; byte[0] is a constant status byte (0x51)
         int gear = (packet.payload[4] & 0xFF);
         if (gear < 1) gear = 1;
+        // Only emit gear events when READY (gear max values aren't set until info read completes)
+        if (state != State.READY) {
+            rearGear = gear;
+            return;
+        }
         if (gear != rearGear) {
             rearGear = gear;
             Timber.d("[%s] RD gear %d/%d", deviceAddress(), rearGear, rearGearMax);

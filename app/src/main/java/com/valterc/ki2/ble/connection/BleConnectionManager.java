@@ -54,8 +54,8 @@ public class BleConnectionManager {
     public void connect(BluetoothDevice device, IBleConnectionListener listener) {
         String address = device.getAddress();
         BleDeviceConnection existing = connectionMap.get(address);
-        if (existing != null && existing.isReady()) {
-            Timber.d("Already connected to %s", address);
+        if (existing != null && existing.isActive()) {
+            Timber.d("Already connected/connecting to %s", address);
             return;
         }
         if (existing != null) {
