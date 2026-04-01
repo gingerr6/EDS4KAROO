@@ -393,10 +393,10 @@ public class BleDeviceConnection {
     }
 
     private void onFrontStatusReport(EdsPacket packet) {
-        if (packet.payload.length < 6) return;
+        if (packet.payload.length < 5) return;
         Timber.d("[%s] FD raw payload: %s", deviceAddress(), bytesToHex(packet.payload));
-        // Payload bytes: [0..1] FD position (LE u16), [2..3] unknown, [4..5] gear index (LE u16)
-        int gear = (packet.payload[4] & 0xFF) | ((packet.payload[5] & 0xFF) << 8);
+        // Gear index is at byte[4] (same as RD); byte[5] is not part of the gear index
+        int gear = (packet.payload[4] & 0xFF);
         if (gear < 1) gear = 1;
         // Only emit gear events when READY (gear max values aren't set until info read completes)
         if (state != State.READY) {
