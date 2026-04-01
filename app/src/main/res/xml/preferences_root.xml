@@ -2,11 +2,6 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <Preference
-        app:fragment="com.valterc.ki2.fragments.settings.SwitchesSettingsFragment"
-        app:icon="@drawable/ic_press"
-        app:title="@string/category_preference_switches" />
-
-    <Preference
         app:fragment="com.valterc.ki2.fragments.settings.BatterySettingsFragment"
         app:icon="@drawable/ic_battery_4"
         app:title="@string/category_preference_battery" />
