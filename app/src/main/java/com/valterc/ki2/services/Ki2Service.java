@@ -761,6 +761,17 @@ public class Ki2Service extends Service
 
         // Emit shifting info so racing mode shows up in the UI
         onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+
+        // Re-emit battery data after a delay so late-registering listeners get values
+        // (listeners register via handler.post() and may miss the initial emit)
+        serviceHandler.postDelayedAction(() -> {
+            Timber.d("Re-emitting battery data for late listeners");
+            onData(deviceId, DataType.BATTERY, new BatteryInfo(fdPowerRaw));
+            onData(deviceId, DataType.BATTERY_RD, new BatteryInfo(rdPowerRaw));
+            onData(deviceId, DataType.SHIFTER_L_VOLTAGE, new BatteryInfo(leftPowerRaw));
+            onData(deviceId, DataType.SHIFTER_R_VOLTAGE, new BatteryInfo(rightPowerRaw));
+            onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+        }, 3000);
     }
 
     @Override
