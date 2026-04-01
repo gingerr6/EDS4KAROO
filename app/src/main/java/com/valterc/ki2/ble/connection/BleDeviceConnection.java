@@ -408,6 +408,7 @@ public class BleDeviceConnection {
     private static int mapFrontGear(int rawPosition) {
         switch (rawPosition) {
             case 5: return 1; // small chainring
+            case 2: // big chainring (mid-cassette shift)
             case 3: return 2; // big chainring
             default: return -1; // transient micro-shift, ignore
         }
