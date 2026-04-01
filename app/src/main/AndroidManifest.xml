@@ -91,7 +91,7 @@
 
         <meta-data
             android:name="io.hammerhead.karooext.MANIFEST_URL"
-            android:value="https://github.com/valterc/ki2/releases/latest/download/manifest.json" />
+            android:value="https://github.com/gingerr6/EDS4KAROO/releases/latest/download/manifest.json" />
 
         <receiver android:name="com.valterc.ki2.receivers.ChangeShiftModeReceiver" />
     </application>
