@@ -339,9 +339,10 @@ public class BleDeviceConnection {
         String qPower = EdsProtocol.parseInfoValue(info, "Q_POWER");
         String hPower = EdsProtocol.parseInfoValue(info, "H_POWER");
 
-        // Rear gear count and current position
+        // Rear gear count and current position (inverted: Wheeltop 1=smallest cog, view expects 1=largest)
         rearGearMax = parseIntSafe(EdsProtocol.parseInfoValue(info, "TOTAL_CNT"), rearGearMax);
-        int initialRearGear = parseIntSafe(EdsProtocol.parseInfoValue(info, "NUM"), -1);
+        int rawRearGear = parseIntSafe(EdsProtocol.parseInfoValue(info, "NUM"), -1);
+        int initialRearGear = rawRearGear > 0 ? (rearGearMax + 1 - rawRearGear) : -1;
 
         // Front derailleur: Q_TOTAL/Q_NUM are raw micro-positions (1-6);
         // map through mapFrontGear() to get actual chainring (1=small, 2=big)
@@ -438,7 +439,11 @@ public class BleDeviceConnection {
         if (packet.payload.length < 5) return;
         Timber.d("[%s] RD raw payload: %s", deviceAddress(), bytesToHex(packet.payload));
         // Gear index is at byte[4]; byte[0] is a constant status byte (0x51)
-        int gear = (packet.payload[4] & 0xFF);
+        int rawGear = (packet.payload[4] & 0xFF);
+        if (rawGear < 1) rawGear = 1;
+        // Wheeltop reports gear 1 = smallest cog, but DrivetrainView expects
+        // gear 1 = largest cog. Invert the gear index.
+        int gear = rearGearMax + 1 - rawGear;
         if (gear < 1) gear = 1;
         // Only emit gear events when READY (gear max values aren't set until info read completes)
         if (state != State.READY) {
@@ -447,7 +452,7 @@ public class BleDeviceConnection {
         }
         if (gear != rearGear) {
             rearGear = gear;
-            Timber.d("[%s] RD gear %d/%d", deviceAddress(), rearGear, rearGearMax);
+            Timber.d("[%s] RD gear %d/%d (raw=%d)", deviceAddress(), rearGear, rearGearMax, rawGear);
             listener.onRearGearChanged(device, rearGear, rearGearMax);
         }
     }
