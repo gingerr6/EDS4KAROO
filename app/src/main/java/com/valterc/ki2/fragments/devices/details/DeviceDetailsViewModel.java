@@ -65,6 +65,7 @@ public class DeviceDetailsViewModel extends ViewModel {
                 postDataIfAvailable(dataMap, DataType.MANUFACTURER_INFO, manufacturerInfo);
                 postDataIfAvailable(dataMap, DataType.SHIFTING, shiftingInfo);
                 postDataIfAvailable(dataMap, DataType.BATTERY, batteryInfo);
+                postDataIfAvailable(dataMap, DataType.BATTERY_RD, batteryInfoRd);
                 postDataIfAvailable(dataMap, DataType.SWITCH, switchEvent);
                 postDataIfAvailable(dataMap, DataType.SIGNAL, signalInfo);
             }
@@ -86,6 +87,7 @@ public class DeviceDetailsViewModel extends ViewModel {
     private final MutableLiveData<ManufacturerInfo> manufacturerInfo;
     private final MutableLiveData<ShiftingInfo> shiftingInfo;
     private final MutableLiveData<BatteryInfo> batteryInfo;
+    private final MutableLiveData<BatteryInfo> batteryInfoRd;
     private final MutableLiveData<SwitchEvent> switchEvent;
     private final MutableLiveData<SignalInfo> signalInfo;
 
@@ -95,6 +97,7 @@ public class DeviceDetailsViewModel extends ViewModel {
         this.manufacturerInfo = new MutableLiveData<>();
         this.shiftingInfo = new MutableLiveData<>();
         this.batteryInfo = new MutableLiveData<>();
+        this.batteryInfoRd = new MutableLiveData<>();
         this.switchEvent = new MutableLiveData<>();
         this.signalInfo = new MutableLiveData<>();
     }
@@ -133,6 +136,10 @@ public class DeviceDetailsViewModel extends ViewModel {
 
     public LiveData<BatteryInfo> getBatteryInfo() {
         return batteryInfo;
+    }
+
+    public LiveData<BatteryInfo> getBatteryInfoRd() {
+        return batteryInfoRd;
     }
 
     public LiveData<SwitchEvent> getSwitchEvent() {

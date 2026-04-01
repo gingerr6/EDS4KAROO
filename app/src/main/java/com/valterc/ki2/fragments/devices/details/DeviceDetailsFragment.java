@@ -151,6 +151,7 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
 
         LinearLayout linearLayoutWaitingForDataBattery = view.findViewById(R.id.linearlayout_device_details_waiting_data_battery);
         TextView textViewBattery = view.findViewById(R.id.textview_device_details_battery);
+        TextView textViewBatteryRd = view.findViewById(R.id.textview_device_details_battery_rd);
 
         LinearLayout linearLayoutWaitingForDataManufacturer = view.findViewById(R.id.linearlayout_device_details_waiting_data_manufacturer);
         TextView textViewManufacturer = view.findViewById(R.id.textview_device_details_manufacturer_name);
@@ -332,35 +333,18 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
         viewModel.getSignalInfo().observe(getViewLifecycleOwner(), signalInfo -> textViewSignal.setText(getString(R.string.text_param_dbm, signalInfo.getValue())));
 
         viewModel.getBatteryInfo().observe(getViewLifecycleOwner(), batteryInfo -> {
-            int batteryValue = batteryInfo.getValue();
-            textViewBattery.setText(getString(R.string.text_param_percentage, batteryValue));
-
-            int color;
-            int drawableId;
-
-            if (batteryValue >= 80) {
-                color = requireContext().getColor(R.color.hh_green);
-                drawableId = R.drawable.ic_battery_5;
-            } else if (batteryValue >= 70) {
-                color = requireContext().getColor(R.color.hh_green);
-                drawableId = R.drawable.ic_battery_4;
-            } else if (batteryValue >= 50) {
-                color = requireContext().getColor(R.color.hh_green);
-                drawableId = R.drawable.ic_battery_3;
-            } else if (batteryValue >= 30) {
-                color = requireContext().getColor(R.color.hh_yellow_dark);
-                drawableId = R.drawable.ic_battery_2;
-            } else if (batteryValue >= 20) {
-                color = requireContext().getColor(R.color.hh_orange_dark);
-                drawableId = R.drawable.ic_battery_1;
-            } else {
-                color = requireContext().getColor(R.color.hh_red);
-                drawableId = R.drawable.ic_battery_0;
-            }
-
-            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textViewBattery, 0, 0, drawableId, 0);
-            TextViewCompat.setCompoundDrawableTintList(textViewBattery, ColorStateList.valueOf(color));
+            int rawValue = batteryInfo.getValue();
+            textViewBattery.setText(String.format("%.2fV", rawValue / 100.0));
+            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textViewBattery, 0, 0, R.drawable.ic_battery_5, 0);
+            TextViewCompat.setCompoundDrawableTintList(textViewBattery, ColorStateList.valueOf(requireContext().getColor(R.color.hh_green)));
             linearLayoutWaitingForDataBattery.setVisibility(View.GONE);
+        });
+
+        viewModel.getBatteryInfoRd().observe(getViewLifecycleOwner(), batteryInfo -> {
+            int rawValue = batteryInfo.getValue();
+            textViewBatteryRd.setText(String.format("%.2fV", rawValue / 100.0));
+            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textViewBatteryRd, 0, 0, R.drawable.ic_battery_5, 0);
+            TextViewCompat.setCompoundDrawableTintList(textViewBatteryRd, ColorStateList.valueOf(requireContext().getColor(R.color.hh_green)));
         });
 
         viewModel.getManufacturerInfo().observe(getViewLifecycleOwner(), manufacturerInfo -> {
