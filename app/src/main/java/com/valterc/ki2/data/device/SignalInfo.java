@@ -42,14 +42,14 @@ public class SignalInfo implements Parcelable {
     }
 
     public SignalStrength getSignalStrength(){
-        if (value > -60){
+        if (value > -50){
             return SignalStrength.EXCELLENT;
         } else if (value > -70) {
             return SignalStrength.GOOD;
-        } else if (value > -80) {
-            return SignalStrength.FAIR;
+        } else if (value > -90) {
+            return SignalStrength.WEAK;
         } else {
-            return SignalStrength.POOR;
+            return SignalStrength.VERY_WEAK;
         }
     }
 
