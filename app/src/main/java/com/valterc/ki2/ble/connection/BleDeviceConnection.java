@@ -405,13 +405,14 @@ public class BleDeviceConnection {
      *   Other positions are transient micro-shifts — ignored.
      * Returns -1 for transient positions.
      */
+    /**
+     * Map raw FD position (1-6) to chainring gear (1=small, 2=big).
+     * Positions 1,2,3 = big chainring; positions 4,5,6 = small chainring.
+     */
     private static int mapFrontGear(int rawPosition) {
-        switch (rawPosition) {
-            case 5: return 1; // small chainring
-            case 2: // big chainring (mid-cassette shift)
-            case 3: return 2; // big chainring
-            default: return -1; // transient micro-shift, ignore
-        }
+        if (rawPosition >= 1 && rawPosition <= 3) return 2; // big chainring
+        if (rawPosition >= 4 && rawPosition <= 6) return 1; // small chainring
+        return -1;
     }
 
     private void onFrontStatusReport(EdsPacket packet) {
