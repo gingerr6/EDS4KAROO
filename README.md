@@ -1,43 +1,29 @@
-# Ki2
+# Ki2/EDS
 
-Ki2 is an extension for Hammerhead Karoo cycling computers. It is a companion app for electronic shifting groupsets produced by a Japanese company.
+Ki2/EDS is an extension for Hammerhead Karoo cycling computers. It is a companion app for electronic shifting groupsets produced by a Japanese company.
 
-[![Buy me a coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-blue)](https://www.paypal.com/donate/?business=N6PWH859NY7W6&no_recurring=1&item_name=Buy+me+a+coffee&currency_code=EUR) [![Validate workflow](https://github.com/valterc/ki2/actions/workflows/android-validate.yml/badge.svg?branch=main)](https://github.com/valterc/ki2/actions/workflows/android-validate.yml) [![Latest Release](https://img.shields.io/github/v/release/valterc/ki2?label=Latest%20Release)](https://github.com/valterc/ki2/releases/latest/)
+[![Buy me a coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-blue)](https://www.paypal.com/donate/?business=N6PWH859NY7W6&no_recurring=1&item_name=Buy+me+a+coffee&currency_code=EUR) 
 
 ## Screenshots
-
-![Ki2 main application](media/image_1.png?raw=true "Ki2 main application")
-![Device information](media/image_2.png?raw=true "Device information")
-![Device information](media/image_3.png?raw=true "Device information")
-![Ki2 settings](media/image_4.png?raw=true "Ki2 settings")
-![Ride elements](media/image_5.png?raw=true "Ride elements")
-![Overlay](media/overlay.gif?raw=true "Overlay")
+NA
 
 ## Features
 
 - Pair and connect to electronic shifting groupsets
 - Integrate shifting information with native Karoo elements
-- Control Karoo screens and trigger actions from the shifting buttons
 - Change shifting mode
 - Overlay shifting information on top of the ride display
 - Receive notifications when shifting battery is low
-- Audio alerts before upcoming synchro shift or when reaching shifting limits
-
-> [!NOTE]
-> The following features require the Ki2 shifting devices to be added to Karoo as extension sensors:
->
-> - Use of native Karoo ride elements
-> - Recording of gear shifts to the ride FIT file
 
 ## How can I install the app?
 
-1. Find the link to the Ki2 APK file from the latest [release page](https://github.com/valterc/ki2/releases/latest/)
+1. Find the link to the EDS APK file from the latest [release page](https://github.com/gingerr6/EDS4KAROO/releases/latest/)
 2. [Sideload Ki2 into Karoo](https://support.hammerhead.io/hc/en-us/articles/31576497036827-Companion-App-Sideloading) (For Karoo 2 follow this [video](https://www.youtube.com/watch?v=qp7H_ZPQEJY))
 3. [Connect to shifting devices from Ki2](https://user-images.githubusercontent.com/1299179/204136334-c8a5a395-c6b5-4d16-a8d5-ff1fa2dd726d.mp4)
-   - Open Ki2
+   - Open EDS
    - Press the `+` button
    - Make sure a wireless shifting device is nearby and that it is active (perform a shift or press a button to wake up the shifting system)
-   - Press the `Add` button in Ki2 to add a device once it is found
+   - Press the `Add` button in EDS to add a device once it is found
 4. Configure the shifting device from Karoo (for example: rename the device - optional)
 5. Add the Ki2 devices to Karoo (important for all features to work)
    - Open Karoo sensors
