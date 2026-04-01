@@ -259,22 +259,6 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
             }
         });
 
-        MaterialCheckBox checkBoxSwitchEventsOnly = view.findViewById(R.id.checkbox_device_details_switch_only);
-        checkBoxSwitchEventsOnly.setChecked(devicePreferences.isSwitchEventsOnly());
-        checkBoxSwitchEventsOnly.addOnCheckedStateChangedListener((checkBox, state) -> {
-            if (!checkBox.isChecked()) {
-                viewModel.getDevicePreferences(requireContext()).setSwitchEventsOnly(false);
-            } else {
-                new AlertDialog.Builder(requireContext(), R.style.AlertDialogStyle)
-                        .setTitle(R.string.text_switches_only)
-                        .setMessage(getString(R.string.text_device_switches_only))
-                        .setPositiveButton(android.R.string.ok, (dialog, whichButton) ->
-                                viewModel.getDevicePreferences(requireContext()).setSwitchEventsOnly(true))
-                        .setNegativeButton(R.string.text_cancel, (dialog, whichButton) ->
-                                checkBox.setChecked(false)).show();
-            }
-        });
-
         View viewGearing = view.findViewById(R.id.constrainglayout_device_details_gearing);
         viewGearing.setOnClickListener(v -> startActivity(new Intent(requireContext(), DeviceGearingActivity.class)
                 .putExtra(DeviceId.class.getSimpleName(), viewModel.getDeviceId())));
