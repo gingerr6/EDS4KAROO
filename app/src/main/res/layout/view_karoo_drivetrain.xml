@@ -40,6 +40,20 @@
                     tools:value=".5"
                     tools:visibility="visible" />
 
+                <com.valterc.ki2.views.battery.BatteryView
+                    android:id="@+id/batteryview_karoo_drivetrain_rd"
+                    android:layout_width="12dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="4dp"
+                    android:visibility="gone"
+                    app:borderColor="@color/hh_green"
+                    app:foregroundColor="@color/hh_green"
+                    app:orientation="vertical_top"
+                    app:borderStrokeWidth="4"
+                    tools:value=".7"
+                    tools:visibility="visible" />
+
                 <TextView
                     android:id="@+id/textview_karoo_drivetrain"
                     android:layout_width="wrap_content"

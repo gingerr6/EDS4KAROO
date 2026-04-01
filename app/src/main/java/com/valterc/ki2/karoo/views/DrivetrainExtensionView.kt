@@ -46,6 +46,12 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
             updateView()
         }
 
+    private val batteryInfoRdConsumer: BiConsumer<DeviceId, BatteryInfo> =
+        BiConsumer<DeviceId, BatteryInfo> { _: DeviceId?, batteryInfo: BatteryInfo? ->
+            this.batteryInfoRd = batteryInfo
+            updateView()
+        }
+
     private val preferencesConsumer: Consumer<PreferencesView> =
         Consumer<PreferencesView> { preferencesView ->
             this.preferencesView = preferencesView
@@ -55,11 +61,13 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
     private val shiftingGearingHelper = ShiftingGearingHelper(context.context)
     private var connectionStatus: ConnectionStatus? = null
     private var batteryInfo: BatteryInfo? = null
+    private var batteryInfoRd: BatteryInfo? = null
     private var preferencesView: PreferencesView? = null
 
     private var textViewWaitingForData: TextView? = null
     private var drivetrainView: DrivetrainView? = null
     private var batteryView: BatteryView? = null
+    private var batteryViewRd: BatteryView? = null
     private var textViewGears: TextView? = null
 
     init {
@@ -67,6 +75,7 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
         serviceClient.registerConnectionInfoWeakListener(connectionInfoConsumer)
         serviceClient.registerShiftingInfoWeakListener(shiftingInfoConsumer)
         serviceClient.registerBatteryInfoWeakListener(batteryInfoConsumer)
+        serviceClient.registerRdBatteryInfoWeakListener(batteryInfoRdConsumer)
         serviceClient.registerPreferencesWeakListener(preferencesConsumer)
     }
 
@@ -76,6 +85,7 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
         serviceClient.unregisterConnectionInfoWeakListener(connectionInfoConsumer)
         serviceClient.unregisterShiftingInfoWeakListener(shiftingInfoConsumer)
         serviceClient.unregisterBatteryInfoWeakListener(batteryInfoConsumer)
+        serviceClient.unregisterRdBatteryInfoWeakListener(batteryInfoRdConsumer)
         serviceClient.unregisterPreferencesWeakListener(preferencesConsumer)
     }
 
@@ -108,6 +118,7 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
         drivetrainView =
             inflatedView.findViewById(R.id.drivetrainview_karoo_drivetrain)
         batteryView = inflatedView.findViewById(R.id.batteryview_karoo_drivetrain)
+        batteryViewRd = inflatedView.findViewById(R.id.batteryview_karoo_drivetrain_rd)
         textViewGears = inflatedView.findViewById(R.id.textview_karoo_drivetrain)
 
         if (karooTheme == KarooTheme.WHITE) {
@@ -132,9 +143,12 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
         val textViewGears = textViewGears ?: return
         val textViewWaitingForData = textViewWaitingForData ?: return
 
+        val batteryViewRd = batteryViewRd
+
         if (connectionStatus != ConnectionStatus.ESTABLISHED || shiftingGearingHelper.hasInvalidGearingInfo() || preferencesView == null) {
             drivetrainView.visibility = View.INVISIBLE
             batteryView.visibility = View.INVISIBLE
+            batteryViewRd?.visibility = View.INVISIBLE
             textViewGears.visibility = View.INVISIBLE
             textViewWaitingForData.visibility = View.VISIBLE
 
@@ -143,6 +157,7 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
         } else {
             textViewWaitingForData.visibility = View.INVISIBLE
             batteryView.visibility = View.VISIBLE
+            batteryViewRd?.visibility = View.VISIBLE
             textViewGears.visibility = View.VISIBLE
             drivetrainView.visibility = View.VISIBLE
         }
@@ -172,27 +187,39 @@ class DrivetrainExtensionView(context: Ki2ExtensionContext, private val showGear
 
         drivetrainView.selectedGearColor = preferencesView.getAccentColor(context, karooTheme)
 
-        batteryInfo?.let { batteryInfo ->
-            batteryView.value = batteryInfo.value.toFloat() / 100
-
-            val criticalBatteryLevel = preferencesView.getBatteryLevelCritical(context)
-            val lowBatteryLevel = preferencesView.getBatteryLevelLow(context)
-
-            if (criticalBatteryLevel != null && batteryInfo.value <= criticalBatteryLevel) {
-                batteryView.setForegroundColor(context.getColor(R.color.hh_red))
-                batteryView.setBorderColor(context.getColor(R.color.hh_red))
-            } else if (lowBatteryLevel != null && batteryInfo.value <= lowBatteryLevel) {
-                batteryView.setForegroundColor(context.getColor(R.color.hh_yellow_darker))
-                batteryView.setBorderColor(context.getColor(R.color.hh_yellow_darker))
-            } else {
-                batteryView.setForegroundColor(context.getColor(R.color.hh_success_green_600))
-                batteryView.setBorderColor(context.getColor(R.color.hh_success_green_600))
-            }
-        } ?: run {
-            batteryView.setForegroundColor(context.getColor(R.color.battery_background_dark))
-            batteryView.setBorderColor(context.getColor(R.color.battery_border_dark))
+        updateBatteryView(batteryView, batteryInfo, preferencesView)
+        if (batteryViewRd != null) {
+            updateBatteryView(batteryViewRd, batteryInfoRd, preferencesView)
         }
 
         viewUpdated()
+    }
+
+    private fun updateBatteryView(view: BatteryView, info: BatteryInfo?, prefs: PreferencesView) {
+        info?.let {
+            val pct = BatteryInfo.toPercentage(it.value)
+            view.value = pct.toFloat() / 100f
+
+            val critical = prefs.getBatteryLevelCritical(context)
+            val low = prefs.getBatteryLevelLow(context)
+
+            when {
+                critical != null && pct <= critical -> {
+                    view.setForegroundColor(context.getColor(R.color.hh_red))
+                    view.setBorderColor(context.getColor(R.color.hh_red))
+                }
+                low != null && pct <= low -> {
+                    view.setForegroundColor(context.getColor(R.color.hh_yellow_darker))
+                    view.setBorderColor(context.getColor(R.color.hh_yellow_darker))
+                }
+                else -> {
+                    view.setForegroundColor(context.getColor(R.color.hh_success_green_600))
+                    view.setBorderColor(context.getColor(R.color.hh_success_green_600))
+                }
+            }
+        } ?: run {
+            view.setForegroundColor(context.getColor(R.color.battery_background_dark))
+            view.setBorderColor(context.getColor(R.color.battery_border_dark))
+        }
     }
 }
