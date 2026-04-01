@@ -8,6 +8,7 @@ public enum Manufacturer {
     GARMIN(1, "Garmin"),
     SHIMANO(41, "Shimano"),
     HAMMERHEAD(289, "Hammerhead"),
+    EDS(1000, "Wheeltop EDS"),
     UNKNOWN(-1, "Unknown");
 
     public static Manufacturer fromId(int id) {

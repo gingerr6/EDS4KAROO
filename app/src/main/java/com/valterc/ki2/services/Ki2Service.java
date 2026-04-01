@@ -736,7 +736,7 @@ public class Ki2Service extends Service
         ManufacturerInfo mfrInfo = new ManufacturerInfo(
                 device.getAddress(),      // componentId = MAC address
                 "",                       // hardwareVersion (not provided by EDS)
-                Manufacturer.UNKNOWN,
+                Manufacturer.EDS,
                 "EDS",                    // modelNumber
                 device.getAddress(),      // serialNumber = MAC address
                 leftVersion + "/" + rightVersion
