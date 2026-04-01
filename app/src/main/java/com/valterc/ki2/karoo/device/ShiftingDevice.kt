@@ -45,9 +45,7 @@ class ShiftingDevice(
                 DataType.Source.SHIFTING_FRONT_GEAR,
                 DataType.Source.SHIFTING_REAR_GEAR,
                 DataType.Source.SHIFTING_BATTERY,
-                DataType.dataTypeId(extensionContext.extension, Ki2DataType.Type.DFLY),
                 DataType.dataTypeId(extensionContext.extension, Ki2DataType.Type.DI2),
-                DataType.dataTypeId(extensionContext.extension, Ki2DataType.Type.STEPS)
             ),
             extensionContext.serviceClient.getDevicePreferences(deviceId)
                 ?.getName(extensionContext.context)
@@ -227,8 +225,7 @@ class ShiftingDevice(
         timestampLastEmittedDataPoints = now()
 
         emitKarooDataPoints(emitter)
-        emitDi2DataPoints(emitter)
-        emitSTEPSDataPoints(emitter)
+        emitShiftingDataPoints(emitter)
     }
 
     private fun emitKarooDataPoints(emitter: Emitter<DeviceEvent>) {
@@ -288,7 +285,7 @@ class ShiftingDevice(
         }
     }
 
-    private fun emitDi2DataPoints(emitter: Emitter<DeviceEvent>) {
+    private fun emitShiftingDataPoints(emitter: Emitter<DeviceEvent>) {
         if (shiftingGearingHelper.hasInvalidGearingInfo()) {
             return
         }
@@ -322,28 +319,6 @@ class ShiftingDevice(
             OnDataPoint(
                 DataPoint(
                     DataType.dataTypeId(extensionContext.extension, Ki2DataType.Type.DI2),
-                    fieldMap,
-                    source.uid
-                )
-            )
-        )
-    }
-
-    private fun emitSTEPSDataPoints(emitter: Emitter<DeviceEvent>) {
-        if (batteryInfo == null) {
-            return
-        }
-
-        val fieldMap = mutableMapOf<String, Double>()
-
-        batteryInfo?.let { batteryInfo ->
-            fieldMap[Ki2DataType.Field.STEPS_BATTERY] = batteryInfo.value.toDouble()
-        }
-
-        emitter.onNext(
-            OnDataPoint(
-                DataPoint(
-                    DataType.dataTypeId(extensionContext.extension, Ki2DataType.Type.STEPS),
                     fieldMap,
                     source.uid
                 )

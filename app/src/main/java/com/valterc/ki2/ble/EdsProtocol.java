@@ -177,31 +177,6 @@ public final class EdsProtocol {
         return packet;
     }
 
-    /**
-     * Build an obfuscated packet (random u8, XOR applied to all fields).
-     * Matches the format used by the official Wheeltop app.
-     *
-     * @param sessionKey Session key.
-     * @param cmd        Command byte.
-     * @param payload    Payload bytes, or null for empty payload.
-     */
-    public static byte[] buildObfuscatedPacket(int sessionKey, int cmd, byte[] payload) {
-        int len = payload != null ? payload.length : 0;
-        byte[] packet = new byte[5 + len + 2];
-        int u8 = (int) (Math.random() * 200) + 1; // non-zero u8
-        int versionByte = (u8 + 50) & 0xFF;
-        packet[0] = (byte) PACKET_PREFIX;
-        packet[1] = (byte) versionByte;
-        packet[2] = (byte) (sessionKey ^ u8);
-        packet[3] = (byte) (cmd ^ u8);
-        packet[4] = (byte) (len ^ u8);
-        for (int i = 0; i < len; i++) {
-            packet[5 + i] = (byte) ((payload[i] & 0xFF) ^ u8);
-        }
-        applyCrc16(packet);
-        return packet;
-    }
-
     // -------------------------------------------------------------------------
     // Packet decoder
     // -------------------------------------------------------------------------

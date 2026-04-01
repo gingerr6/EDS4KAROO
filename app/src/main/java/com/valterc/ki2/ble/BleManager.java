@@ -10,7 +10,7 @@ import android.content.IntentFilter;
 import timber.log.Timber;
 
 /**
- * Manages access to the system Bluetooth adapter, analogous to AntManager.
+ * Manages access to the system Bluetooth adapter.
  *
  * Provides the BluetoothAdapter and tracks adapter state changes so that
  * higher-level components (scanner, connections) can react to BT enable/disable.

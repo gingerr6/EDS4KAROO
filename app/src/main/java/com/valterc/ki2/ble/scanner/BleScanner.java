@@ -16,7 +16,6 @@ import timber.log.Timber;
 
 /**
  * Scans for EDS BLE devices advertising the Nordic UART Service.
- * Analogous to AntScanner but using BLE LE scanning.
  */
 public class BleScanner {
 

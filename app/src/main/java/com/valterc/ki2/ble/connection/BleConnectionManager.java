@@ -12,7 +12,6 @@ import timber.log.Timber;
 
 /**
  * Manages BLE connections to multiple EDS devices, keyed by MAC address.
- * Analogous to AntConnectionManager.
  */
 public class BleConnectionManager {
 

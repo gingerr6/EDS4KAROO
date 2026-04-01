@@ -66,7 +66,7 @@
     <string name="text_param_dbm">%d dBm</string>
     <string name="text_dismiss">Dismiss</string>
     <string name="text_param_low_battery">Battery of %1$s at %2$d%%</string>
-    <string name="text_di2_low_battery">Di2 low battery</string>
+    <string name="text_di2_low_battery">EDS low battery</string>
     <string name="text_update_complete">Update complete</string>
     <string name="text_update_complete_restart">Update complete, please restart Karoo</string>
     <string name="text_ki2_updated">EDS updated</string>
@@ -134,8 +134,6 @@
     <string name="text_ok">OK</string>
     <string name="text_disabled_audio_alerts">Disabled Shifting audio alerts</string>
     <string name="text_enabled_audio_alerts">Enabled Shifting audio alerts</string>
-    <string name="text_ant_recording">ANT Recording</string>
-    <string name="text_warning_ant_recording">WARNING!\n\nANT recording will record all ANT events to a file for debugging purposes.\n\nEnable ONLY when troubleshooting ANT issues, this feature vastly increases resource usage and battery consumption.\n\nUse at your own risk.</string>
     <string name="text_gears">Gears</string>
     <string name="text_drivetrain">Drivetrain</string>
     <string name="text_bike_battery">Bike Battery</string>

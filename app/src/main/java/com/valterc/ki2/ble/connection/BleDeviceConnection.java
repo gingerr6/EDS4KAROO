@@ -221,13 +221,6 @@ public class BleDeviceConnection {
         writePacket(packet);
     }
 
-    /**
-     * Trigger a device info re-read (same as battery refresh).
-     */
-    public void refreshDeviceInfo() {
-        refreshBatteryInfo();
-    }
-
     // -------------------------------------------------------------------------
     // Incoming data dispatch
     // -------------------------------------------------------------------------
