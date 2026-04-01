@@ -43,9 +43,8 @@ fun TextView(
             vertical = Alignment.Vertical.CenterVertically,
             horizontal = when (dataAlignment) {
                 ViewConfig.Alignment.LEFT -> Alignment.Horizontal.Start
-                ViewConfig.Alignment.CENTER,
-                ViewConfig.Alignment.RIGHT,
-                    -> Alignment.Horizontal.End
+                ViewConfig.Alignment.CENTER -> Alignment.Horizontal.CenterHorizontally
+                ViewConfig.Alignment.RIGHT -> Alignment.Horizontal.End
             },
         ),
     ) {

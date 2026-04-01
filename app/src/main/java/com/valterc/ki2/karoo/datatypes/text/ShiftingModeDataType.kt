@@ -76,7 +76,7 @@ class ShiftingModeDataType(private val extensionContext: Ki2ExtensionContext) :
                 glance.compose(context, DpSize.Unspecified) {
                     TextView(
                         shiftingInfo.shiftingMode.mode,
-                        config.alignment,
+                        ViewConfig.Alignment.CENTER,
                         config.textSize,
                         actionSendBroadcast(ChangeShiftModeReceiver.getIntent(context, deviceId))
                     )
