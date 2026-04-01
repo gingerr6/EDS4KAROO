@@ -66,7 +66,6 @@ import com.valterc.ki2.services.callbacks.IPreferencesCallback;
 import com.valterc.ki2.services.callbacks.IScanCallback;
 import com.valterc.ki2.services.callbacks.IShiftingCallback;
 import com.valterc.ki2.services.callbacks.ISwitchCallback;
-import com.valterc.ki2.services.debug.DebugHelper;
 import com.valterc.ki2.services.handler.ServiceHandler;
 import com.valterc.ki2.update.background.BackgroundUpdateChecker;
 import com.valterc.ki2.update.background.IUpdateCheckerListener;
@@ -585,7 +584,6 @@ public class Ki2Service extends Service
             }
         });
 
-        DebugHelper.init(deviceStore);
         PostUpdateActions.executePostInit(new PostUpdateContext(this, deviceStore));
         devicePreferencesStore.setDevices(deviceStore.getDevices());
 
