@@ -44,6 +44,32 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
     private static final int ENABLE_REMOVE_BUTTON_DELAY_MS = 1000;
     private static final int SWITCH_AUTO_CLEAR_DELAY_MS = 1000;
 
+    private void setBatteryIcon(TextView textView, int percentage) {
+        int color;
+        int drawableId;
+        if (percentage >= 80) {
+            color = requireContext().getColor(R.color.hh_green);
+            drawableId = R.drawable.ic_battery_5;
+        } else if (percentage >= 60) {
+            color = requireContext().getColor(R.color.hh_green);
+            drawableId = R.drawable.ic_battery_4;
+        } else if (percentage >= 40) {
+            color = requireContext().getColor(R.color.hh_green);
+            drawableId = R.drawable.ic_battery_3;
+        } else if (percentage >= 25) {
+            color = requireContext().getColor(R.color.hh_yellow_dark);
+            drawableId = R.drawable.ic_battery_2;
+        } else if (percentage >= 10) {
+            color = requireContext().getColor(R.color.hh_orange_dark);
+            drawableId = R.drawable.ic_battery_1;
+        } else {
+            color = requireContext().getColor(R.color.hh_red);
+            drawableId = R.drawable.ic_battery_0;
+        }
+        TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textView, 0, 0, drawableId, 0);
+        TextViewCompat.setCompoundDrawableTintList(textView, ColorStateList.valueOf(color));
+    }
+
     private final Handler handler = new Handler();
     private boolean serviceBound;
     private DeviceDetailsViewModel viewModel;
@@ -333,18 +359,16 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
         viewModel.getSignalInfo().observe(getViewLifecycleOwner(), signalInfo -> textViewSignal.setText(getString(R.string.text_param_dbm, signalInfo.getValue())));
 
         viewModel.getBatteryInfo().observe(getViewLifecycleOwner(), batteryInfo -> {
-            int rawValue = batteryInfo.getValue();
-            textViewBattery.setText(String.format("%.2fV", rawValue / 100.0));
-            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textViewBattery, 0, 0, R.drawable.ic_battery_5, 0);
-            TextViewCompat.setCompoundDrawableTintList(textViewBattery, ColorStateList.valueOf(requireContext().getColor(R.color.hh_green)));
+            int pct = batteryInfo.getPercentage();
+            textViewBattery.setText(getString(R.string.text_param_percentage, pct));
+            setBatteryIcon(textViewBattery, pct);
             linearLayoutWaitingForDataBattery.setVisibility(View.GONE);
         });
 
         viewModel.getBatteryInfoRd().observe(getViewLifecycleOwner(), batteryInfo -> {
-            int rawValue = batteryInfo.getValue();
-            textViewBatteryRd.setText(String.format("%.2fV", rawValue / 100.0));
-            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(textViewBatteryRd, 0, 0, R.drawable.ic_battery_5, 0);
-            TextViewCompat.setCompoundDrawableTintList(textViewBatteryRd, ColorStateList.valueOf(requireContext().getColor(R.color.hh_green)));
+            int pct = batteryInfo.getPercentage();
+            textViewBatteryRd.setText(getString(R.string.text_param_percentage, pct));
+            setBatteryIcon(textViewBatteryRd, pct);
         });
 
         viewModel.getManufacturerInfo().observe(getViewLifecycleOwner(), manufacturerInfo -> {

@@ -6,15 +6,15 @@
     scansDevices="true">
 
     <DataType
-        description="FD battery voltage."
-        displayName="FD Battery V"
+        description="FD battery percentage."
+        displayName="FD Battery %"
         graphical="true"
         icon="@drawable/ic_hh_battery"
         typeId="DATATYPE_SHIFTING_BATTERY_PERCENTAGE" />
 
     <DataType
-        description="RD battery voltage."
-        displayName="RD Battery V"
+        description="RD battery percentage."
+        displayName="RD Battery %"
         graphical="true"
         icon="@drawable/ic_hh_battery"
         typeId="DATATYPE_RD_BATTERY_PERCENTAGE" />

@@ -45,6 +45,42 @@ public class BatteryInfo implements Parcelable {
         return value;
     }
 
+    /**
+     * Convert a raw Wheeltop battery voltage value to percentage (0-100).
+     * Lookup table from the EDS protocol specification.
+     *
+     * @param rawValue Raw voltage × 100 (e.g. 810 = 8.10V).
+     * @return Battery percentage (0-100).
+     */
+    public static int toPercentage(int rawValue) {
+        if (rawValue >= 820) return 100;
+        if (rawValue >= 816) return 95;
+        if (rawValue >= 812) return 90;
+        if (rawValue >= 808) return 85;
+        if (rawValue >= 800) return 80;
+        if (rawValue >= 792) return 75;
+        if (rawValue >= 780) return 70;
+        if (rawValue >= 776) return 65;
+        if (rawValue >= 770) return 60;
+        if (rawValue >= 766) return 55;
+        if (rawValue >= 760) return 50;
+        if (rawValue >= 750) return 40;
+        if (rawValue >= 746) return 35;
+        if (rawValue >= 740) return 30;
+        if (rawValue >= 736) return 25;
+        if (rawValue >= 730) return 20;
+        if (rawValue >= 710) return 10;
+        if (rawValue >= 690) return 5;
+        return 0;
+    }
+
+    /**
+     * Get the battery percentage for this battery info.
+     */
+    public int getPercentage() {
+        return toPercentage(value);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

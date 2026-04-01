@@ -62,7 +62,7 @@ class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2Extensi
             rawValue != null && rawValue!! > 0 ->
                 glance.compose(context, DpSize.Unspecified) {
                     TextView(
-                        "%.2fV".format(rawValue!! / 100.0),
+                        "${BatteryInfo.toPercentage(rawValue!!)}%",
                         dataAlignment = config.alignment,
                         fontSize = config.textSize
                     )
