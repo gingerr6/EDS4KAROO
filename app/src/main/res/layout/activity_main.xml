@@ -22,11 +22,12 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:includeFontPadding="false"
+                android:maxLines="1"
                 android:padding="0dp"
                 android:text="@string/app_name"
                 android:textAlignment="center"
                 android:textColor="@color/black"
-                android:textSize="50sp"
+                android:textSize="36sp"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
