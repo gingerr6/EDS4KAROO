@@ -172,17 +172,18 @@ class GearsDetailedExtensionView(context: Ki2ExtensionContext,) : Ki2ExtensionVi
         gearsView.selectedGearColor = preferencesView.getAccentColor(context, karooTheme)
 
         batteryInfo?.let { batteryInfo ->
-            batteryView.value = batteryInfo.value.toFloat() / 100
-            textViewBattery.text = context.getString(R.string.text_param_percentage, batteryInfo.value)
+            val pct = BatteryInfo.toPercentage(batteryInfo.value)
+            batteryView.value = pct.toFloat() / 100
+            textViewBattery.text = context.getString(R.string.text_param_percentage, pct)
             textViewBattery.visibility = View.VISIBLE
 
             val criticalBatteryLevel = preferencesView.getBatteryLevelCritical(context)
             val lowBatteryLevel = preferencesView.getBatteryLevelLow(context)
 
-            if (criticalBatteryLevel != null && batteryInfo.value <= criticalBatteryLevel) {
+            if (criticalBatteryLevel != null && pct <= criticalBatteryLevel) {
                 batteryView.setForegroundColor(context.getColor(R.color.hh_red))
                 batteryView.setBorderColor(context.getColor(R.color.hh_red))
-            } else if (lowBatteryLevel != null && batteryInfo.value <= lowBatteryLevel) {
+            } else if (lowBatteryLevel != null && pct <= lowBatteryLevel) {
                 batteryView.setForegroundColor(context.getColor(R.color.hh_yellow_darker))
                 batteryView.setBorderColor(context.getColor(R.color.hh_yellow_darker))
             } else {

@@ -97,19 +97,20 @@ class BikeBatteryExtensionView(context: Ki2ExtensionContext) : Ki2ExtensionView(
             fillView.value = 0f
             textView.setText(R.string.text_na)
         } else {
+            val pct = BatteryInfo.toPercentage(batteryInfo.value)
             val batteryLevelCritical = batteryLevelCritical
             val batteryLevelLow = batteryLevelLow
 
-            if (batteryLevelCritical != null && batteryInfo.value <= batteryLevelCritical) {
+            if (batteryLevelCritical != null && pct <= batteryLevelCritical) {
                 fillView.setForegroundColor(context.getColor(R.color.hh_red_600))
-            } else if (batteryLevelLow != null && batteryInfo.value <= batteryLevelLow) {
+            } else if (batteryLevelLow != null && pct <= batteryLevelLow) {
                 fillView.setForegroundColor(context.getColor(R.color.hh_yellow))
             } else {
                 fillView.setForegroundColor(context.getColor(R.color.hh_success_green_600))
             }
 
-            textView.text = context.getString(R.string.text_param_percentage, batteryInfo.value)
-            fillView.value = batteryInfo.value * 0.01f
+            textView.text = context.getString(R.string.text_param_percentage, pct)
+            fillView.value = pct * 0.01f
         }
 
         viewUpdated()
