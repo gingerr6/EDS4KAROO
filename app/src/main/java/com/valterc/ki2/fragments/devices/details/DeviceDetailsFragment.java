@@ -475,8 +475,12 @@ public class DeviceDetailsFragment extends Fragment implements IKarooKeyListener
             } else {
                 FrontTeethPattern frontTeethPattern = shiftingInfo.getFrontTeethPattern();
                 RearTeethPattern rearTeethPattern = shiftingInfo.getRearTeethPattern();
+                String frontName = frontTeethPattern == FrontTeethPattern.UNKNOWN
+                        ? shiftingInfo.getFrontGearMax() + " gears" : frontTeethPattern.getName();
+                String rearName = rearTeethPattern == RearTeethPattern.UNKNOWN
+                        ? shiftingInfo.getRearGearMax() + " gears" : rearTeethPattern.getName();
                 textView.setText(getString(R.string.text_param_gearing_detect_automatically,
-                        frontTeethPattern.getName(), rearTeethPattern.getName()));
+                        frontName, rearName));
             }
         } else {
             int[] frontGearing = devicePreferences.getCustomGearingFront();
