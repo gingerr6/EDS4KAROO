@@ -22,11 +22,11 @@
     <color name="hh_gears_yellow">#FFC107</color>
 
     <color name="hh_green">#209f13</color>
-    <color name="hh_orange">#fd7919</color>
-    <color name="hh_orange_dark">#db6216</color>
-    <color name="hh_yellow">#F8E400</color>
-    <color name="hh_yellow_dark">#cbba00</color>
-    <color name="hh_yellow_darker">#baa900</color>
+    <color name="hh_orange">#E75300</color>
+    <color name="hh_orange_dark">#C44700</color>
+    <color name="hh_yellow">#E75300</color>
+    <color name="hh_yellow_dark">#C44700</color>
+    <color name="hh_yellow_darker">#E75300</color>
     <color name="hh_black">#1b2d2d</color>
     <color name="hh_black_dark">#102020</color>
     <color name="hh_dark_grey">#636363</color>
@@ -41,9 +41,9 @@
     <color name="hh_red_600">#d34343</color>
     <color name="hh_red_700">#993d2b</color>
     <color name="hh_title">#1a2d3d</color>
-    <color name="hh_light_blue_dark">#7A9FAF</color>
-    <color name="hh_light_blue">#93ABB6</color>
-    <color name="hh_dark_blue">#214559</color>
+    <color name="hh_light_blue_dark">#E75300</color>
+    <color name="hh_light_blue">#E97530</color>
+    <color name="hh_dark_blue">#1a1a1a</color>
 
     <color name="red_faded">#E85959</color>
     <color name="black">#FF000000</color>
