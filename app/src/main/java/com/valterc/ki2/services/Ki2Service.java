@@ -31,6 +31,7 @@ import com.valterc.ki2.data.connection.ConnectionStatus;
 import com.valterc.ki2.data.connection.ConnectionsDataManager;
 import com.valterc.ki2.data.device.BatteryInfo;
 import com.valterc.ki2.data.device.DeviceId;
+import com.valterc.ki2.data.device.SignalInfo;
 import com.valterc.ki2.data.device.DeviceStore;
 import com.valterc.ki2.data.device.DeviceType;
 import com.valterc.ki2.data.info.DataType;
@@ -760,6 +761,12 @@ public class Ki2Service extends Service
 
         // Emit shifting info so racing mode shows up in the UI
         onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+    }
+
+    @Override
+    public void onSignalStrength(BluetoothDevice device, int rssi) {
+        DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
+        onData(deviceId, DataType.SIGNAL, new SignalInfo(rssi));
     }
 
     // -------------------------------------------------------------------------

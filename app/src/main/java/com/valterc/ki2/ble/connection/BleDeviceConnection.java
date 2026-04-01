@@ -47,6 +47,7 @@ public class BleDeviceConnection {
     private static final int RECONNECT_DELAY_MS        = 2_000;
     private static final int WRITE_TIMEOUT_MS           = 3_000;
     private static final long BATTERY_REFRESH_INTERVAL_MS = 5 * 60 * 1_000L; // 5 minutes
+    private static final long RSSI_POLL_INTERVAL_MS      = 5_000L;
     private static final int MAX_CONNECT_RETRIES        = 3;
 
     private final Context context;
@@ -63,6 +64,7 @@ public class BleDeviceConnection {
     private int nextBlock;
     private final StringBuilder infoBuffer = new StringBuilder();
     private final Runnable refreshBatteryRunnable = this::refreshBatteryInfo;
+    private final Runnable rssiPollRunnable = this::pollRssi;
 
     private int connectRetries = 0;
 
@@ -161,6 +163,13 @@ public class BleDeviceConnection {
                                             byte[] value) {
             if (value == null || value.length == 0) return;
             handleIncoming(value);
+        }
+
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS && state == State.READY) {
+                listener.onSignalStrength(device, rssi);
+            }
         }
     };
 
@@ -387,15 +396,27 @@ public class BleDeviceConnection {
             }
         }
 
-        // Schedule next battery refresh
+        // Schedule next battery refresh and start RSSI polling
         handler.removeCallbacks(refreshBatteryRunnable);
         handler.postDelayed(refreshBatteryRunnable, BATTERY_REFRESH_INTERVAL_MS);
+        handler.removeCallbacks(rssiPollRunnable);
+        handler.post(rssiPollRunnable);
     }
 
     private void refreshBatteryInfo() {
         if (state != State.READY) return;
         Timber.d("[%s] Requesting battery refresh", deviceAddress());
         writePacket(EdsProtocol.buildStartReadPacket(sessionKey));
+    }
+
+    private void pollRssi() {
+        if (state != State.READY || gatt == null) return;
+        try {
+            gatt.readRemoteRssi();
+        } catch (SecurityException e) {
+            Timber.e(e, "Permission denied on readRemoteRssi");
+        }
+        handler.postDelayed(rssiPollRunnable, RSSI_POLL_INTERVAL_MS);
     }
 
     /**
@@ -521,6 +542,8 @@ public class BleDeviceConnection {
         State previous = state;
         setState(State.DISCONNECTED);
         closeGatt();
+        handler.removeCallbacks(rssiPollRunnable);
+        handler.removeCallbacks(refreshBatteryRunnable);
         rxCharacteristic = null;
         txCharacteristic = null;
         if (previous != State.IDLE && previous != State.DISCONNECTED) {

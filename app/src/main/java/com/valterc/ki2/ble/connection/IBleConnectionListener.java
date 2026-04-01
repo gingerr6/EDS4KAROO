@@ -48,4 +48,12 @@ public interface IBleConnectionListener {
                       int leftPowerRaw, int rightPowerRaw,
                       int fdPowerRaw, int rdPowerRaw,
                       int racingMode);
+
+    /**
+     * Called when BLE RSSI (signal strength) is read.
+     *
+     * @param device The source device.
+     * @param rssi   Signal strength in dBm.
+     */
+    void onSignalStrength(BluetoothDevice device, int rssi);
 }
