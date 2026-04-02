@@ -42,12 +42,12 @@ public class BackgroundUpdateChecker {
                 UpdateStateStore.checkedForUpdates(context, updateAvailable, releaseInfo.getName());
 
                 if (updateAvailable) {
-                    Timber.i("Ki2 update available, current version: %s, latest version: %s", BuildConfig.VERSION_NAME, releaseInfo.getName());
+                    Timber.i("EDS update available, current version: %s, latest version: %s", BuildConfig.VERSION_NAME, releaseInfo.getName());
                     if (listener != null) {
                         listener.onNewUpdateAvailable(releaseInfo);
                     }
                 } else {
-                    Timber.i("Ki2 no update available, latest version: %s", releaseInfo.getName());
+                    Timber.i("EDS no update available, latest version: %s", releaseInfo.getName());
                 }
             } catch (Exception e) {
                 Timber.w(e, "Unable to check for updates");

@@ -22,7 +22,7 @@ import timber.log.Timber;
 
 public class GetLatestReleaseInfoTask implements Callable<ReleaseInfo> {
 
-    public static final String URL_LATEST_RELEASE = "https://api.github.com/repos/valterc/ki2/releases/latest";
+    public static final String URL_LATEST_RELEASE = "https://api.github.com/repos/gingerr6/EDS4KAROO/releases/latest";
     public static final String KEY_ASSETS = "assets";
     public static final String KEY_DESCRIPTION = "body";
     public static final String KEY_NAME = "name";
