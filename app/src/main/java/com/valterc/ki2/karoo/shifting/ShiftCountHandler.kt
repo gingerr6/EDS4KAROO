@@ -14,7 +14,6 @@ import kotlin.math.abs
 
 class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(extensionContext) {
 
-    private var lastReceivedShiftingInfo: ShiftingInfo? = null
     private var previouslyUsedShiftingInfo: ShiftingInfo? = null
     private val listeners: MutableList<Consumer<ShiftCountHandler>> = mutableListOf()
 
@@ -27,8 +26,6 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
     val shiftingInfoConsumer =
         BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
-            lastReceivedShiftingInfo = shiftingInfo
-
             if (rideState !is RideState.Recording) {
                 return@BiConsumer
             }
@@ -40,6 +37,11 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
             updateShiftCount(shiftingInfo)
         }
+
+    init {
+        // Register immediately so we don't miss shifts if ride is already recording
+        extensionContext.serviceClient.registerShiftingInfoWeakListener(shiftingInfoConsumer)
+    }
 
     private fun updateShiftCount(shiftingInfo: ShiftingInfo) {
         val previousShiftingInfo = previouslyUsedShiftingInfo ?: return
@@ -53,15 +55,16 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
     override fun onRideStart() {
         previouslyUsedShiftingInfo = null
-        extensionContext.serviceClient.registerShiftingInfoWeakListener(shiftingInfoConsumer)
+        frontShiftCount = 0
+        rearShiftCount = 0
     }
 
     override fun onRideResume() {
-        lastReceivedShiftingInfo?.let { updateShiftCount(it) }
+        // Reset baseline so first shift after resume is counted
+        previouslyUsedShiftingInfo = null
     }
 
     override fun onRideEnd() {
-        extensionContext.serviceClient.unregisterShiftingInfoWeakListener(shiftingInfoConsumer)
         frontShiftCount = 0
         rearShiftCount = 0
         previouslyUsedShiftingInfo = null
