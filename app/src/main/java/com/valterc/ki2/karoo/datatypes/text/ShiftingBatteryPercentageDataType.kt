@@ -42,8 +42,10 @@ class ShiftingBatteryPercentageDataType(private val extensionContext: Ki2Extensi
         }
 
         voltageListener = BiConsumer { _: DeviceId, info: BatteryInfo ->
-            rawValue = info.value
-            CoroutineScope(Dispatchers.IO).launch { emitView(context, config, emitter) }
+            if (info.value > 0) {
+                rawValue = info.value
+                CoroutineScope(Dispatchers.IO).launch { emitView(context, config, emitter) }
+            }
         }
 
         extensionContext.serviceClient.registerConnectionInfoWeakListener(connectionInfoListener!!)

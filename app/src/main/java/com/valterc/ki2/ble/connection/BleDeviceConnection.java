@@ -44,11 +44,12 @@ public class BleDeviceConnection {
         DISCONNECTED
     }
 
-    private static final int RECONNECT_DELAY_MS        = 2_000;
+    private static final int RECONNECT_DELAY_MS        = 1_500;
     private static final int WRITE_TIMEOUT_MS           = 3_000;
     private static final long BATTERY_REFRESH_INTERVAL_MS = 5 * 60 * 1_000L; // 5 minutes
     private static final long RSSI_POLL_INTERVAL_MS      = 30_000L; // 30 seconds
-    private static final int MAX_CONNECT_RETRIES        = 3;
+    private static final int MAX_CONNECT_RETRIES        = 5;
+    private static final int CONNECTION_TIMEOUT_MS       = 10_000;
 
     private final Context context;
     private final BluetoothDevice device;
@@ -65,6 +66,7 @@ public class BleDeviceConnection {
     private final StringBuilder infoBuffer = new StringBuilder();
     private final Runnable refreshBatteryRunnable = this::refreshBatteryInfo;
     private final Runnable rssiPollRunnable = this::pollRssi;
+    private final Runnable connectionTimeoutRunnable = this::onConnectionTimeout;
 
     private int connectRetries = 0;
 
@@ -199,10 +201,18 @@ public class BleDeviceConnection {
         try {
             gatt = device.connectGatt(context, false, gattCallback,
                     BluetoothDevice.TRANSPORT_LE);
+            handler.removeCallbacks(connectionTimeoutRunnable);
+            handler.postDelayed(connectionTimeoutRunnable, CONNECTION_TIMEOUT_MS);
         } catch (SecurityException e) {
             Timber.e(e, "Permission denied on connectGatt");
             setState(State.IDLE);
         }
+    }
+
+    private void onConnectionTimeout() {
+        if (state == State.READY || state == State.IDLE || state == State.DISCONNECTED) return;
+        Timber.w("[%s] Connection timeout in state %s", deviceAddress(), state);
+        retryOrDisconnect();
     }
 
     /** Cleanly disconnect from the device. */
@@ -370,6 +380,7 @@ public class BleDeviceConnection {
         boolean isRefresh = (state == State.REFRESHING_INFO);
         setState(State.READY);
         connectRetries = 0;
+        handler.removeCallbacks(connectionTimeoutRunnable);
 
         if (!isRefresh) {
             listener.onConnected(device);
@@ -544,6 +555,7 @@ public class BleDeviceConnection {
         closeGatt();
         handler.removeCallbacks(rssiPollRunnable);
         handler.removeCallbacks(refreshBatteryRunnable);
+        handler.removeCallbacks(connectionTimeoutRunnable);
         rxCharacteristic = null;
         txCharacteristic = null;
         if (previous != State.IDLE && previous != State.DISCONNECTED) {
