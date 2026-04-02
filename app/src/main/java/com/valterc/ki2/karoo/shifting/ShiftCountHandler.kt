@@ -15,6 +15,7 @@ import kotlin.math.abs
 class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(extensionContext) {
 
     private var previouslyUsedShiftingInfo: ShiftingInfo? = null
+    private var baselineSettleCount = 0
     private val listeners: MutableList<Consumer<ShiftCountHandler>> = mutableListOf()
 
     var frontShiftCount = 0
@@ -28,6 +29,7 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
         BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
             if (previouslyUsedShiftingInfo == null) {
                 previouslyUsedShiftingInfo = shiftingInfo
+                baselineSettleCount = BASELINE_SETTLE_EVENTS
                 return@BiConsumer
             }
 
@@ -42,18 +44,17 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
     private fun updateShiftCount(shiftingInfo: ShiftingInfo) {
         val previousShiftingInfo = previouslyUsedShiftingInfo ?: return
 
-        val frontDelta = abs(previousShiftingInfo.frontGear - shiftingInfo.frontGear)
-        val rearDelta = abs(previousShiftingInfo.rearGear - shiftingInfo.rearGear)
-
-        // A real shift moves 1 gear at a time. Large deltas indicate a state
-        // transition (e.g. device reconnect, initialization) — update baseline only.
-        if (frontDelta > 2 || rearDelta > 2) {
+        // After a baseline reset, skip a few events to let the initialization
+        // sequence settle (e.g. onRearGearChanged fires before onFrontGearChanged
+        // with stale default frontGear, causing a phantom +1 FD count).
+        if (baselineSettleCount > 0) {
+            baselineSettleCount--
             previouslyUsedShiftingInfo = shiftingInfo
             return
         }
 
-        frontShiftCount += frontDelta
-        rearShiftCount += rearDelta
+        frontShiftCount += abs(previousShiftingInfo.frontGear - shiftingInfo.frontGear)
+        rearShiftCount += abs(previousShiftingInfo.rearGear - shiftingInfo.rearGear)
 
         previouslyUsedShiftingInfo = shiftingInfo
         listeners.forEach { it.accept(this) }
@@ -61,19 +62,28 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
     override fun onRideStart() {
         previouslyUsedShiftingInfo = null
+        baselineSettleCount = 0
         frontShiftCount = 0
         rearShiftCount = 0
     }
 
     override fun onRideResume() {
-        // Reset baseline so first shift after resume is counted
         previouslyUsedShiftingInfo = null
+        baselineSettleCount = 0
     }
 
     override fun onRideEnd() {
         frontShiftCount = 0
         rearShiftCount = 0
         previouslyUsedShiftingInfo = null
+        baselineSettleCount = 0
+    }
+
+    companion object {
+        // Number of events to skip after baseline reset to let gear values settle.
+        // During device init, onRearGearChanged fires before onFrontGearChanged,
+        // so the first 1-2 events may have stale default frontGear values.
+        private const val BASELINE_SETTLE_EVENTS = 2
     }
 
     fun addListener(listener: Consumer<ShiftCountHandler>) {
