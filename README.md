@@ -27,7 +27,7 @@ NA
    - Make sure a wireless shifting device is nearby and that it is active (perform a shift or press a button to wake up the shifting system)
    - Press the `Add` button in EDS to add a device once it is found
 4. Configure the shifting device from Karoo (for example: rename the device - optional)
-5. Customize battery alerts, shifting audio alerts, button controls, overlays and other features from Ki2
+5. Customize battery alerts, shifting audio alerts, button controls, overlays and other features from EDS
 
 
 ## License and notices
