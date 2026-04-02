@@ -45,10 +45,6 @@ public class KeyedDataStreamWeakListenerList<TKey, TValue> {
         listeners.remove(consumer);
     }
 
-    public void removeKey(TKey key) {
-        values.remove(key);
-    }
-
     public void pushData(TKey key, TValue value) {
         pushData(key, value, true);
     }

@@ -198,6 +198,16 @@ public class DeviceDataRouter {
 
     private void attemptToUpdateCurrentDevice() {
         if (tryUpdateCurrentDevice()) {
+            // Current device changed — clear stale replay data from filtered listeners
+            // so old device values aren't replayed to newly registering listeners
+            connectionInfoListeners.clearLastData();
+            batteryInfoListeners.clearLastData();
+            rdBatteryInfoListeners.clearLastData();
+            lShifterVoltageListeners.clearLastData();
+            rShifterVoltageListeners.clearLastData();
+            shiftingInfoListeners.clearLastData();
+            devicePreferencesListener.clearLastData();
+
             DeviceData newDeviceData = deviceDataMap.computeIfAbsent(currentDeviceId, DeviceData::new);
 
             if (newDeviceData.getConnectionInfo() != null) {
@@ -271,32 +281,6 @@ public class DeviceDataRouter {
         return false;
     }
 
-    public void clearDevice(DeviceId deviceId) {
-        deviceDataMap.remove(deviceId);
-
-        if (Objects.equals(deviceId, currentDeviceId)) {
-            currentDeviceId = null;
-
-            // Clear cached last-data in filtered listeners so stale values aren't replayed
-            connectionInfoListeners.clearLastData();
-            batteryInfoListeners.clearLastData();
-            rdBatteryInfoListeners.clearLastData();
-            lShifterVoltageListeners.clearLastData();
-            rShifterVoltageListeners.clearLastData();
-            shiftingInfoListeners.clearLastData();
-            devicePreferencesListener.clearLastData();
-        }
-
-        // Remove this device's entry from unfiltered (keyed) listeners
-        connectionInfoUnfilteredListeners.removeKey(deviceId);
-        batteryInfoUnfilteredListeners.removeKey(deviceId);
-        rdBatteryInfoUnfilteredListeners.removeKey(deviceId);
-        lShifterVoltageUnfilteredListeners.removeKey(deviceId);
-        rShifterVoltageUnfilteredListeners.removeKey(deviceId);
-        shiftingInfoUnfilteredListeners.removeKey(deviceId);
-        devicePreferencesUnfilteredListener.removeKey(deviceId);
-    }
-
     public void onConnectionInfo(DeviceId deviceId, ConnectionInfo connectionInfo) {
         DeviceData deviceData = deviceDataMap.computeIfAbsent(deviceId, DeviceData::new);
         deviceData.setConnectionInfo(connectionInfo);
@@ -305,15 +289,9 @@ public class DeviceDataRouter {
             connectionInfoListeners.pushData(deviceId, connectionInfo);
         }
 
-        connectionInfoUnfilteredListeners.pushData(deviceId, connectionInfo);
-
-        // When a device disconnects, clear its cached data so stale values
-        // are not replayed to listeners when a different device connects.
-        if (connectionInfo.getConnectionStatus() == ConnectionStatus.CLOSED) {
-            clearDevice(deviceId);
-        }
-
         attemptToUpdateCurrentDevice();
+
+        connectionInfoUnfilteredListeners.pushData(deviceId, connectionInfo);
     }
 
     public void onBattery(DeviceId deviceId, BatteryInfo batteryInfo) {
