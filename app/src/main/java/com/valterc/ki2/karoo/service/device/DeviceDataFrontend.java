@@ -489,6 +489,10 @@ public class DeviceDataFrontend {
         registrationAction.unregister();
     }
 
+    public void clearDevice(DeviceId deviceId) {
+        handler.post(() -> dataRouter.clearDevice(deviceId));
+    }
+
     @Nullable
     public DevicePreferencesView getDevicePreferences(DeviceId deviceId) {
         if (service == null) {

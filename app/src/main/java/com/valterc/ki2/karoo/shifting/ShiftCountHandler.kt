@@ -26,10 +26,6 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
     val shiftingInfoConsumer =
         BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
-            if (rideState !is RideState.Recording) {
-                return@BiConsumer
-            }
-
             if (previouslyUsedShiftingInfo == null) {
                 previouslyUsedShiftingInfo = shiftingInfo
                 return@BiConsumer
@@ -39,7 +35,7 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
         }
 
     init {
-        // Register immediately so we don't miss shifts if ride is already recording
+        // Register immediately so we count shifts from the start
         extensionContext.serviceClient.registerShiftingInfoWeakListener(shiftingInfoConsumer)
     }
 

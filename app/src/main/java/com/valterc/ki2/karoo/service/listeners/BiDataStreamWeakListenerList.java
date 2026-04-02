@@ -41,6 +41,11 @@ public class BiDataStreamWeakListenerList<TData1, TData2> {
         listeners.remove(consumer);
     }
 
+    public void clearLastData() {
+        lastData1 = null;
+        lastData2 = null;
+    }
+
     public void pushData(TData1 data1, TData2 data2) {
         pushData(data1, data2, true);
     }

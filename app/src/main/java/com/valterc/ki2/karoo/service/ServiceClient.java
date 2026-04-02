@@ -376,6 +376,16 @@ public class ServiceClient {
     }
 
     /**
+     * Clear all cached data for a device. Call this when a device is disconnected or
+     * disabled so that stale data is not replayed to listeners when a different device connects.
+     *
+     * @param deviceId Device identifier.
+     */
+    public void clearDeviceData(DeviceId deviceId) {
+        deviceDataFrontend.clearDevice(deviceId);
+    }
+
+    /**
      * Change shift mode. The shift mode will not be changed if the service cannot be reached.
      *
      * @param deviceId Device identifier.
