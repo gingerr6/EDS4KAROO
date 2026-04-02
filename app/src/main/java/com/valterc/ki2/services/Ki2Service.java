@@ -452,6 +452,7 @@ public class Ki2Service extends Service
                 // Toggle racing mode: 0 → 1, 1 → 0
                 state.racingMode = state.racingMode == 0 ? 1 : 0;
                 state.racingModeManuallySet = true;
+                saveRacingMode(mac, state.racingMode);
                 Timber.d("changeShiftMode: toggled to racingMode=%d for %s", state.racingMode, mac);
 
                 // Send BLE command to set racing mode on device
@@ -796,7 +797,29 @@ public class Ki2Service extends Service
     // -------------------------------------------------------------------------
 
     private BleGearState gearStateOrCreate(BluetoothDevice device) {
-        return gearStateMap.computeIfAbsent(device.getAddress(), k -> new BleGearState());
+        return gearStateMap.computeIfAbsent(device.getAddress(), k -> {
+            BleGearState state = new BleGearState();
+            // Restore persisted racing mode
+            int saved = loadRacingMode(device.getAddress());
+            if (saved >= 0) {
+                state.racingMode = saved;
+                state.racingModeManuallySet = true;
+                Timber.d("Restored racingMode=%d for %s", saved, device.getAddress());
+            }
+            return state;
+        });
+    }
+
+    private static final String PREFS_RACING_MODE = "racing_mode";
+
+    private void saveRacingMode(String mac, int mode) {
+        getSharedPreferences(PREFS_RACING_MODE, MODE_PRIVATE)
+                .edit().putInt(mac, mode).apply();
+    }
+
+    private int loadRacingMode(String mac) {
+        return getSharedPreferences(PREFS_RACING_MODE, MODE_PRIVATE)
+                .getInt(mac, -1);
     }
 
     private ShiftingInfo buildShiftingInfo(BleGearState state) {
