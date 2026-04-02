@@ -8,32 +8,22 @@
     android:paddingHorizontal="20dp"
     tools:context=".fragments.update.UpdateFragment">
 
-    <LinearLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="10dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="34sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            android:text="@string/text_update"
-            android:textColor="@color/hh_grey"
-            android:textSize="34sp" />
-
-    </LinearLayout>
+        android:paddingTop="10dp"
+        android:paddingBottom="5dp"
+        android:text="@string/text_update"
+        android:textAlignment="center"
+        android:textColor="@color/black"
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="80dp">
+        android:paddingBottom="60dp">
 
         <LinearLayout
             android:layout_width="match_parent"
