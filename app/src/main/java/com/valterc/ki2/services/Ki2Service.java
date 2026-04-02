@@ -698,14 +698,14 @@ public class Ki2Service extends Service
     @Override
     public void onConnected(BluetoothDevice device) {
         DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
-        gearStateMap.put(device.getAddress(), new BleGearState());
+        gearStateOrCreate(device); // reuse existing state to preserve racingMode
         onConnectionStatus(deviceId, ConnectionStatus.ESTABLISHED);
     }
 
     @Override
     public void onDisconnected(BluetoothDevice device) {
         DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
-        gearStateMap.remove(device.getAddress());
+        // Don't remove gear state — preserve racingMode across reconnects
         onConnectionStatus(deviceId, ConnectionStatus.CLOSED);
     }
 
@@ -761,6 +761,17 @@ public class Ki2Service extends Service
 
         // Emit shifting info so racing mode shows up in the UI
         onData(deviceId, DataType.SHIFTING, buildShiftingInfo(state));
+
+        // If race mode was manually set, re-send the command to the device on reconnect
+        if (state.racingModeManuallySet && state.racingMode == 1) {
+            String mac = BleDeviceMapper.toMacAddress(deviceId);
+            BleDeviceConnection connection = bleConnectionManager.getConnection(mac);
+            if (connection != null && connection.isReady()) {
+                Timber.d("Re-sending race mode command on reconnect");
+                connection.sendCommand(EdsProtocol.CMD_SET_PROTECTION_THRESHOLD,
+                        new byte[]{0x01});
+            }
+        }
 
         // Re-emit battery data after a delay so late-registering listeners get values
         // (listeners register via handler.post() and may miss the initial emit)
