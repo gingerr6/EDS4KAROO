@@ -3,8 +3,8 @@
   "packageName": "com.valterc.ki2",
   "iconUrl": "https://github.com/gingerr6/EDS4KAROO/releases/latest/download/icon.png",
   "latestApkUrl": "https://github.com/gingerr6/EDS4KAROO/releases/latest/download/eds-release.apk",
-  "latestVersion": "1.8",
-  "latestVersionCode": 9,
+  "latestVersion": "1.9",
+  "latestVersionCode": 10,
   "developer": "gingerr6",
   "description": "Connect to Wheeltop EDS wireless electronic groupsets via BLE. Display gear information, battery levels, shift counts, and drivetrain visuals on your Karoo. Toggle Race Mode from the ride screen.",
   "releaseNotes": "* Fixed battery and shifter data not updating in release builds\n* Fixed FD gear mapping (2 chainrings from 6 micro-positions)\n* Fixed RD gear orientation in drivetrain visual\n* Fixed crash on front gear value during connection\n* Added BLE signal strength monitoring\n* Added FD and RD battery percentage display\n* Added Race mode toggle (Normal/Race)\n* Added auto-retry on BLE connection failure\n* Wheeltop orange/black branding\n* Removed unused Shimano/ANT+ code\n* Single device connection limit"
