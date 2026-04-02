@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         baseInputConnection = new BaseInputConnection(findViewById(android.R.id.content), true);
 
         TextView textViewVersion = findViewById(R.id.textview_main_version);
-        textViewVersion.setText(BuildConfig.VERSION_NAME);
+        textViewVersion.setText("v" + BuildConfig.VERSION_NAME);
 
         viewPager = findViewById(R.id.viewpager2_main);
         viewPager.setAdapter(new MainViewPagerAdapter(this));
