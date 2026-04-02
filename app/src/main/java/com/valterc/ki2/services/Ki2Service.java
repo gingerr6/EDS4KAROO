@@ -706,9 +706,8 @@ public class Ki2Service extends Service
     @Override
     public void onDisconnected(BluetoothDevice device) {
         DeviceId deviceId = BleDeviceMapper.fromBluetoothDevice(device);
-        // Remove in-memory gear state; racingMode is persisted to SharedPreferences
-        // and will be restored by gearStateOrCreate on reconnect
-        gearStateMap.remove(device.getAddress());
+        // Keep gear state — it's keyed by MAC so different devices don't conflict,
+        // and preserving it avoids emitting ShiftingInfo with frontGear=0 on reconnect
         onConnectionStatus(deviceId, ConnectionStatus.CLOSED);
     }
 
