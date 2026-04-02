@@ -42,8 +42,18 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
     private fun updateShiftCount(shiftingInfo: ShiftingInfo) {
         val previousShiftingInfo = previouslyUsedShiftingInfo ?: return
 
-        frontShiftCount += abs(previousShiftingInfo.frontGear - shiftingInfo.frontGear)
-        rearShiftCount += abs(previousShiftingInfo.rearGear - shiftingInfo.rearGear)
+        val frontDelta = abs(previousShiftingInfo.frontGear - shiftingInfo.frontGear)
+        val rearDelta = abs(previousShiftingInfo.rearGear - shiftingInfo.rearGear)
+
+        // A real shift moves 1 gear at a time. Large deltas indicate a state
+        // transition (e.g. device reconnect, initialization) — update baseline only.
+        if (frontDelta > 2 || rearDelta > 2) {
+            previouslyUsedShiftingInfo = shiftingInfo
+            return
+        }
+
+        frontShiftCount += frontDelta
+        rearShiftCount += rearDelta
 
         previouslyUsedShiftingInfo = shiftingInfo
         listeners.forEach { it.accept(this) }
