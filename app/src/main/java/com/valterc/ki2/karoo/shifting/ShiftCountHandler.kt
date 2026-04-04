@@ -15,6 +15,7 @@ import kotlin.math.abs
 class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(extensionContext) {
 
     private var previouslyUsedShiftingInfo: ShiftingInfo? = null
+    private var currentDeviceId: DeviceId? = null
     private var baselineSettleCount = 0
     private val listeners: MutableList<Consumer<ShiftCountHandler>> = mutableListOf()
 
@@ -26,7 +27,16 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
         get() = frontShiftCount + rearShiftCount
 
     val shiftingInfoConsumer =
-        BiConsumer<DeviceId, ShiftingInfo> { _: DeviceId, shiftingInfo: ShiftingInfo ->
+        BiConsumer<DeviceId, ShiftingInfo> { deviceId: DeviceId, shiftingInfo: ShiftingInfo ->
+            // When the active device changes, reset baseline so we don't
+            // compare stale gear values from the previous device.
+            if (deviceId != currentDeviceId) {
+                currentDeviceId = deviceId
+                previouslyUsedShiftingInfo = shiftingInfo
+                baselineSettleCount = BASELINE_SETTLE_EVENTS
+                return@BiConsumer
+            }
+
             if (previouslyUsedShiftingInfo == null) {
                 previouslyUsedShiftingInfo = shiftingInfo
                 baselineSettleCount = BASELINE_SETTLE_EVENTS
@@ -62,6 +72,7 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
 
     override fun onRideStart() {
         previouslyUsedShiftingInfo = null
+        currentDeviceId = null
         baselineSettleCount = 0
         frontShiftCount = 0
         rearShiftCount = 0
@@ -76,6 +87,7 @@ class ShiftCountHandler(extensionContext: Ki2ExtensionContext) : RideHandler(ext
         frontShiftCount = 0
         rearShiftCount = 0
         previouslyUsedShiftingInfo = null
+        currentDeviceId = null
         baselineSettleCount = 0
     }
 
