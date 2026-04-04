@@ -533,6 +533,18 @@ public class Ki2Service extends Service
         }
     };
 
+    private final BroadcastReceiver receiverScreenOn = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Timber.i("Screen on: triggering immediate reconnect check");
+            if (hasActiveCallbacks() && bleManager.isBluetoothReady()
+                    && !bleConnectionManager.hasActiveConnection()) {
+                bleConnectionManager.reconnectAll(Ki2Service.this);
+                schedulePeriodicReconnect(); // reset the periodic timer
+            }
+        }
+    };
+
     // -------------------------------------------------------------------------
     // Service fields
     // -------------------------------------------------------------------------
@@ -552,7 +564,7 @@ public class Ki2Service extends Service
     private final Map<String, BleGearState> gearStateMap = new HashMap<>();
 
     /** Interval for periodic reconnection attempts to disconnected devices. */
-    private static final long RECONNECT_INTERVAL_MS = 60_000L; // 1 minute
+    private static final long RECONNECT_INTERVAL_MS = 30_000L; // 30 seconds
     private final Handler reconnectHandler = new Handler(Looper.getMainLooper());
     private final Runnable reconnectRunnable = this::periodicReconnect;
 
@@ -599,6 +611,8 @@ public class Ki2Service extends Service
                 new IntentFilter("io.hammerhead.action.RECONNECT_DEVICES"), Context.RECEIVER_EXPORTED);
         registerReceiver(receiverInRide,
                 new IntentFilter("io.hammerhead.action.IN_RIDE"), Context.RECEIVER_EXPORTED);
+        registerReceiver(receiverScreenOn,
+                new IntentFilter(Intent.ACTION_SCREEN_ON), Context.RECEIVER_EXPORTED);
         Timber.i("Service created");
     }
 
@@ -626,6 +640,7 @@ public class Ki2Service extends Service
 
         unregisterReceiver(receiverReconnectDevices);
         unregisterReceiver(receiverInRide);
+        unregisterReceiver(receiverScreenOn);
         super.onDestroy();
     }
 
