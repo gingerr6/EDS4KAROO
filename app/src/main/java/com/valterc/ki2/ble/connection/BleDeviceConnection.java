@@ -48,8 +48,9 @@ public class BleDeviceConnection {
     private static final int WRITE_TIMEOUT_MS           = 3_000;
     private static final long BATTERY_REFRESH_INTERVAL_MS = 5 * 60 * 1_000L; // 5 minutes
     private static final long RSSI_POLL_INTERVAL_MS      = 30_000L; // 30 seconds
-    private static final int MAX_CONNECT_RETRIES        = 5;
+    private static final int MAX_DIRECT_CONNECT_RETRIES = 3;
     private static final int CONNECTION_TIMEOUT_MS       = 10_000;
+    private static final long AUTO_CONNECT_TIMEOUT_MS    = 30_000L; // 30s for background connect
 
     private final Context context;
     private final BluetoothDevice device;
@@ -190,7 +191,11 @@ public class BleDeviceConnection {
     /** Initiate a GATT connection to the device. */
     public void connect() {
         if (state != State.IDLE && state != State.DISCONNECTED) return;
-        Timber.i("[%s] Connecting… (attempt %d)", deviceAddress(), connectRetries + 1);
+        // Use autoConnect after initial direct attempts are exhausted so Android
+        // connects in the background whenever the device starts advertising.
+        boolean useAutoConnect = connectRetries >= MAX_DIRECT_CONNECT_RETRIES;
+        Timber.i("[%s] Connecting… (attempt %d, autoConnect=%b)",
+                deviceAddress(), connectRetries + 1, useAutoConnect);
         setState(State.CONNECTING);
         infoBuffer.setLength(0);
         nextBlock = 0;
@@ -199,10 +204,11 @@ public class BleDeviceConnection {
         rearGear = -1;
 
         try {
-            gatt = device.connectGatt(context, false, gattCallback,
+            gatt = device.connectGatt(context, useAutoConnect, gattCallback,
                     BluetoothDevice.TRANSPORT_LE);
             handler.removeCallbacks(connectionTimeoutRunnable);
-            handler.postDelayed(connectionTimeoutRunnable, CONNECTION_TIMEOUT_MS);
+            long timeout = useAutoConnect ? AUTO_CONNECT_TIMEOUT_MS : CONNECTION_TIMEOUT_MS;
+            handler.postDelayed(connectionTimeoutRunnable, timeout);
         } catch (SecurityException e) {
             Timber.e(e, "Permission denied on connectGatt");
             setState(State.IDLE);
@@ -537,16 +543,16 @@ public class BleDeviceConnection {
 
     private void retryOrDisconnect() {
         closeGatt();
-        if (connectRetries < MAX_CONNECT_RETRIES) {
-            connectRetries++;
-            Timber.i("[%s] Retrying connection in %dms (attempt %d/%d)",
-                    deviceAddress(), RECONNECT_DELAY_MS, connectRetries, MAX_CONNECT_RETRIES);
-            setState(State.DISCONNECTED);
-            handler.postDelayed(this::connect, RECONNECT_DELAY_MS);
+        connectRetries++;
+        if (connectRetries <= MAX_DIRECT_CONNECT_RETRIES) {
+            Timber.i("[%s] Retrying direct connection in %dms (attempt %d)",
+                    deviceAddress(), RECONNECT_DELAY_MS, connectRetries);
         } else {
-            Timber.w("[%s] Max retries reached, giving up", deviceAddress());
-            handleDisconnect();
+            Timber.i("[%s] Switching to autoConnect (attempt %d)",
+                    deviceAddress(), connectRetries);
         }
+        setState(State.DISCONNECTED);
+        handler.postDelayed(this::connect, RECONNECT_DELAY_MS);
     }
 
     private void handleDisconnect() {

@@ -8,7 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.IInterface;
 import android.os.Parcelable;
 import android.os.RemoteCallbackList;
@@ -549,6 +551,11 @@ public class Ki2Service extends Service
 
     private final Map<String, BleGearState> gearStateMap = new HashMap<>();
 
+    /** Interval for periodic reconnection attempts to disconnected devices. */
+    private static final long RECONNECT_INTERVAL_MS = 60_000L; // 1 minute
+    private final Handler reconnectHandler = new Handler(Looper.getMainLooper());
+    private final Runnable reconnectRunnable = this::periodicReconnect;
+
     // -------------------------------------------------------------------------
     // Service lifecycle
     // -------------------------------------------------------------------------
@@ -598,6 +605,7 @@ public class Ki2Service extends Service
     @Override
     public void onDestroy() {
         Timber.i("Service destroyed");
+        reconnectHandler.removeCallbacks(reconnectRunnable);
         bleConnectionManager.disconnectAll();
         bleManager.dispose();
 
@@ -667,6 +675,28 @@ public class Ki2Service extends Service
             bleConnectionManager.disconnectAll();
             connectionsDataManager.clearConnections();
         }
+        schedulePeriodicReconnect();
+    }
+
+    /**
+     * Periodically attempt to reconnect to saved devices that have dropped off.
+     * This covers the case where a device disconnects after all direct retries
+     * are exhausted (e.g. long idle with no advertising).
+     */
+    private void periodicReconnect() {
+        if (!hasActiveCallbacks() || !bleManager.isBluetoothReady()) {
+            return;
+        }
+        if (!bleConnectionManager.hasActiveConnection()) {
+            Timber.i("Periodic reconnect: no active connection, reconnecting…");
+            bleConnectionManager.reconnectAll(this);
+        }
+        reconnectHandler.postDelayed(reconnectRunnable, RECONNECT_INTERVAL_MS);
+    }
+
+    private void schedulePeriodicReconnect() {
+        reconnectHandler.removeCallbacks(reconnectRunnable);
+        reconnectHandler.postDelayed(reconnectRunnable, RECONNECT_INTERVAL_MS);
     }
 
     private boolean hasActiveCallbacks() {
