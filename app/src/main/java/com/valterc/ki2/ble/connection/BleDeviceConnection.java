@@ -51,6 +51,7 @@ public class BleDeviceConnection {
     private static final int MAX_DIRECT_CONNECT_RETRIES = 3;
     private static final int CONNECTION_TIMEOUT_MS       = 10_000;
     private static final long AUTO_CONNECT_TIMEOUT_MS    = 30_000L; // 30s for background connect
+    private static final long REFRESH_TIMEOUT_MS         = 10_000L; // 10s timeout for battery refresh
 
     private final Context context;
     private final BluetoothDevice device;
@@ -68,6 +69,7 @@ public class BleDeviceConnection {
     private final Runnable refreshBatteryRunnable = this::refreshBatteryInfo;
     private final Runnable rssiPollRunnable = this::pollRssi;
     private final Runnable connectionTimeoutRunnable = this::onConnectionTimeout;
+    private final Runnable refreshTimeoutRunnable = this::onRefreshTimeout;
 
     private int connectRetries = 0;
 
@@ -321,6 +323,8 @@ public class BleDeviceConnection {
         } else if (state == State.READY) {
             Timber.d("[%s] startRead ACK (refresh), reading block 0", deviceAddress());
             setState(State.REFRESHING_INFO);
+            handler.removeCallbacks(refreshTimeoutRunnable);
+            handler.postDelayed(refreshTimeoutRunnable, REFRESH_TIMEOUT_MS);
         } else {
             return;
         }
@@ -387,6 +391,7 @@ public class BleDeviceConnection {
         setState(State.READY);
         connectRetries = 0;
         handler.removeCallbacks(connectionTimeoutRunnable);
+        handler.removeCallbacks(refreshTimeoutRunnable);
 
         if (!isRefresh) {
             listener.onConnected(device);
@@ -421,9 +426,24 @@ public class BleDeviceConnection {
     }
 
     private void refreshBatteryInfo() {
-        if (state != State.READY) return;
+        if (state != State.READY) {
+            // State not ready (e.g. stuck in REFRESHING_INFO) — reschedule so we
+            // keep trying instead of silently giving up on future refreshes.
+            handler.removeCallbacks(refreshBatteryRunnable);
+            handler.postDelayed(refreshBatteryRunnable, BATTERY_REFRESH_INTERVAL_MS);
+            return;
+        }
         Timber.d("[%s] Requesting battery refresh", deviceAddress());
         writePacket(EdsProtocol.buildStartReadPacket(sessionKey));
+    }
+
+    private void onRefreshTimeout() {
+        if (state != State.REFRESHING_INFO) return;
+        Timber.w("[%s] Battery refresh timed out, returning to READY", deviceAddress());
+        setState(State.READY);
+        // Schedule next refresh attempt
+        handler.removeCallbacks(refreshBatteryRunnable);
+        handler.postDelayed(refreshBatteryRunnable, BATTERY_REFRESH_INTERVAL_MS);
     }
 
     private void pollRssi() {
@@ -562,6 +582,7 @@ public class BleDeviceConnection {
         handler.removeCallbacks(rssiPollRunnable);
         handler.removeCallbacks(refreshBatteryRunnable);
         handler.removeCallbacks(connectionTimeoutRunnable);
+        handler.removeCallbacks(refreshTimeoutRunnable);
         rxCharacteristic = null;
         txCharacteristic = null;
         if (previous != State.IDLE && previous != State.DISCONNECTED) {
